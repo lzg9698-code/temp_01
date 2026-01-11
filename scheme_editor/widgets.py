@@ -214,12 +214,8 @@ class TemplatesWidget(QWidget):
         try:
             import glob
 
-            # 精确匹配不同类型的模板文件，避免重复
-            j2_files = []
-            for ext in [".j2", ".nc.j2", ".jinja2"]:
-                pattern = os.path.join(template_dir, f"*{ext}")
-                files = glob.glob(pattern)
-                j2_files.extend(files)
+            # 扫描.j2文件（包含.j2、.nc.j2、.jinja2等所有变体）
+            j2_files = glob.glob(os.path.join(template_dir, "*.j2"))
 
             if not j2_files:
                 self.status_label.setText(f"目录 {template_dir} 中未找到模板文件")
