@@ -1,0 +1,88 @@
+name: INDEX G420
+description: 三个通道主程序及全局参数
+templates:
+- name: 1_0.MPF
+  file: 1_0.MPF.j2
+  description: 通道1主程序
+  output_name: '1_0'
+  output_ext: MPF
+- name: 2_0.MPF
+  file: 2_0.MPF.j2
+  description: 通道2主程序
+  output_name: '2_0'
+  output_ext: MPF
+- name: 3_0.MPF
+  file: 3_0.MPF.j2
+  description: 通道3主程序
+  output_name: '3_0'
+  output_ext: MPF
+- name: 全局参数配置
+  file: DG_CAL_IR9.SPF.j2
+  description: ''
+  output_name: DG_CAL_IR9
+  output_ext: SPF
+referenced_groups:
+- 基础切削参数
+- 刀具参数
+- 工件参数
+- 钻削参数
+- 位置参数
+defaults:
+  U_PRET_X: 1.5
+  U_PRET_Z: -50
+  tip_model: DM24
+  U_FIRST_MILLING_T: 0.5
+  U_FIRST_DRILLING_T: 0.2
+  I_SPZ: 0
+  raw_diameter: 50
+  workpiece_length: 100
+  safety_distance: 5
+  raw_length: 120
+  part_length: 100
+macros:
+- name: SYNC_TURNING_RIGHT_CH1
+  content: M100
+- name: SYNC_TURNING_RIGHT_CH2
+  content: M200
+- name: SYNC_TURNING_RIGHT_CH3
+  content: M300
+- name: SYNC_TURNING_LEFT_CH1
+  content: M110
+- name: SYNC_TURNING_LEFT_CH2
+  content: M210
+- name: SYNC_TURNING_LEFT_CH3
+  content: M310
+- name: FINISH_TURNING_CH1
+  content: M120
+- name: FINISH_TURNING_CH2
+  content: M220
+- name: FINISH_TURNING_CH3
+  content: M320
+- name: RELIEF_GROOVE_right_CH1
+  content: M130
+- name: RELIEF_GROOVE_right_CH2
+  content: M230
+- name: RELIEF_GROOVE_right_CH3
+  content: M330
+- name: FINISH_GROOVING_CH1
+  content: M140
+- name: FINISH_GROOVING_CH2
+  content: M240
+- name: FINISH_GROOVING_CH3
+  content: M340
+- name: SHARP_GROOVE_right_CH1
+  content: M150
+- name: SHARP_GROOVE_right_CH2
+  content: M250
+- name: SHARP_GROOVE_right_CH3
+  content: M350
+- name: left_T_START3_END3
+  content: M360
+- name: right_T_START3_END3
+  content: M370
+- name: RELIEF_GROOVE_left_CH1
+  content: M131
+- name: RELIEF_GROOVE_left_CH2
+  content: M231
+- name: RELIEF_GROOVE_left_CH3
+  content: M331

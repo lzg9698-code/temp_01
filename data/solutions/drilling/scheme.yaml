@@ -1,0 +1,23 @@
+name: 钻孔
+description: 基础钻孔NC代码生成，包含钻孔、铰孔、攻丝等
+templates:
+- name: 简单钻孔
+  file: simple_drill.nc.j2
+  description: 简单钻孔循环
+  output_name: ''
+  output_ext: nc
+- name: 深孔钻孔
+  file: deep_drill.j2
+  description: 深孔钻孔循环
+  output_name: ''
+  output_ext: nc
+referenced_groups:
+- 基础切削参数
+- 刀具参数
+- 工件参数
+- 钻削参数
+- 位置参数
+defaults:
+  drill_diameter: 10.0
+  feed_rate: 400
+  spindle_speed: 1500

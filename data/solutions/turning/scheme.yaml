@@ -1,0 +1,29 @@
+name: 车削加工
+description: 基础车削NC代码生成，包含外圆、端面车削等
+templates:
+  - name: 外圆车削
+    file: outer_circle.nc.j2
+    description: 外圆车削循环
+  - name: 端面车削
+    file: face.nc.j2
+    description: 端面车削循环
+  - name: 切槽
+    file: groove.nc.j2
+    description: 切槽加工
+referenced_groups:
+  - 基础切削参数
+  - 刀具参数
+  - 工件参数
+  - 车削参数
+defaults:
+  feed_rate: 1200
+  spindle_speed: 2000
+  tool_number: 1
+  material_diameter: 50
+  final_diameter: 45
+  part_length: 100
+  depth_of_cut: 2.5
+  finishing_allowance: 0.2
+  groove_width: 3.0
+  groove_depth: 5.0
+  groove_position: 0.0

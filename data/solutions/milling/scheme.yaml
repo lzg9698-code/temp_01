@@ -1,0 +1,30 @@
+name: 铣削加工
+description: 基础铣削NC代码生成，包含平面铣削、轮廓铣削、钻孔等
+templates:
+  - name: 平面铣削
+    file: face_mill.nc.j2
+    description: 平面铣削
+  - name: 轮廓铣削
+    file: contour.nc.j2
+    description: 轮廓铣削
+  - name: 钻孔
+    file: drill.nc.j2
+    description: 钻孔加工
+referenced_groups:
+  - 基础切削参数
+  - 刀具参数
+  - 工件参数
+  - 铣削参数
+  - 钻削参数
+  - 位置参数
+defaults:
+  feed_rate: 800
+  spindle_speed: 3000
+  tool_diameter: 10
+  workpiece_length: 100
+  workpiece_width: 80
+  workpiece_height: 20
+  depth_of_cut: 2.0
+  step_over: 8.0
+  safety_height: 5.0
+  hole_depth: 15.0

@@ -1,107 +1,75 @@
 # NC代码生成器 - 极简版
 
-基于Jinja2模板的超轻量级NC代码生成工具。
+基于 Jinja2 模板的超轻量级 NC 代码生成工具，专为 CNC 编程工程师设计的 Python 桌面应用。
 
-## 特点
+## 🎯 项目目标
+将复杂的企业级 NC 生成逻辑精简为模块化、易维护的超轻量级架构，保留核心价值：
+- **高效渲染**：基于 Jinja2 的强大 NC 代码生成。
+- **动态参数**：根据方案配置自动生成输入表单，支持实时校验。
+- **即时预览**：参数修改即刻反映在生成的代码中。
 
-- **零配置** - 开箱即用，无需数据库
-- **三栏界面** - 方案选择 / 参数输入 / 输出预览
-- **实时预览** - 参数变更即时刷新
-- **语法高亮** - NC代码着色显示
-- **极简架构** - 仅5个Python文件
+## ✨ 核心特性
+- **零配置启动**：无需数据库，基于文件系统，开箱即用。
+- **现代化 UI**：三栏式布局（方案选择 / 参数配置 / 代码预览），操作直观。
+- **全局参数库**：支持跨方案引用公共参数组，减少重复定义。
+- **方案编辑器**：内置可视化方案编辑工具，轻松管理模板和参数。
+- **语法高亮**：对 G/M 代码、坐标、注释等进行着色显示。
 
-## 安装
+## 🏗️ 项目架构
 
+### 核心目录结构
+```text
+nc-generator-simple/
+├── main.py              # 应用入口
+├── src/                 # 源代码目录
+│   ├── core.py          # 核心引擎协调器
+│   ├── solution_manager.py
+│   ├── render_engine.py
+│   ├── parameter_manager.py
+│   ├── models.py
+│   ├── ui.py
+│   ├── gui/             # 通用 GUI 组件
+│   └── scheme_editor/    # 方案编辑器模块
+├── tests/               # 测试代码目录
+├── solutions/           # 加工方案包目录 (YAML + Jinja2)
+├── config/              # 全局配置文件 (parameters.yaml)
+├── exports/             # NC 代码导出目录
+└── README.md            # 项目说明
+```
+
+## 🚀 快速开始
+
+### 1. 安装依赖
+确保已安装 Python 3.10+，然后运行：
 ```bash
 pip install -r requirements.txt
 ```
 
-## 使用
-
+### 2. 启动应用
 ```bash
 python main.py
 ```
 
-## 目录结构
+### 3. 使用流程
+1. **选择方案**：在左侧列表中选择一个加工方案（如车削、铣削）。
+2. **配置参数**：在中间面板调整加工参数，系统会自动校验数值合法性。
+3. **选择模板**：如果方案包含多个模板，在预览区上方切换。
+4. **实时预览**：代码区域会根据当前参数实时更新。
+5. **导出代码**：点击“导出 NC 文件”保存结果到 `exports/` 目录。
 
-```
-nc-generator-simple/
-├── main.py              # 启动入口
-├── core.py              # 核心引擎
-├── ui.py                # 用户界面
-├── models.py            # 数据模型
-├── config.py            # 配置管理
-├── templates/           # 模板包目录
-│   ├── turning/         # 车削模板包
-│   │   ├── scheme.yaml  # 方案配置
-│   │   ├── outer_circle.nc.j2
-│   │   ├── face.nc.j2
-│   │   └── groove.nc.j2
-│   ├── milling/         # 铣削模板包
-│   │   ├── scheme.yaml  # 方案配置
-│   │   ├── face_mill.nc.j2
-│   │   ├── contour.nc.j2
-│   │   └── drill.nc.j2
-│   └── drilling/        # 钻孔模板包
-│       ├── scheme.yaml  # 方案配置
-│       ├── simple_drill.nc.j2
-│       ├── deep_drill.j2
-│       └── ream.nc.j2
-└── exports/             # 输出目录
-```
+## 🛠️ 自定义与扩展
 
-## 添加新方案
+### 添加新方案
+1. 在 `solutions/` 下创建新目录。
+2. 编写 `scheme.yaml` 定义方案元数据、参数引用和模板列表。
+3. 放入对应的 `.nc.j2` 模板文件。
+4. 重启应用或在编辑器中刷新即可。
 
-1. 在 `templates/` 目录创建新的子目录（如 `new_process/`）
-2. 在子目录中创建 `scheme.yaml` 配置文件
-3. 在同一目录中创建对应的 `.nc.j2` 模板文件
-4. 重启应用即可自动加载
+### 管理全局参数
+在 `config/parameters.yaml` 中定义常用的参数组（如“刀具参数”、“工件参数”），即可在各个方案中通过 `referenced_groups` 引用。
 
-### 方案配置示例
+## 📚 更多文档
+- **[开发指南](DEVELOPMENT.md)**：深入了解架构设计、代码规范和测试方法。
 
-```yaml
-name: "新加工工艺"
-description: "新的NC代码生成工艺"
-
-templates:
-  - name: "工艺名称"
-    file: "template_file.nc.j2"
-    description: "工艺描述"
-
-parameters:
-  参数组名:
-    参数名:
-      type: number|string|int|bool|select
-      default: 默认值
-      min: 最小值  # number类型
-      max: 最大值  # number类型
-      description: "参数描述"
-
-defaults:
-  参数名: 默认值
-```
-
-## 方案配置示例
-
-```yaml
-name: "车削加工"
-description: "基础车削NC代码生成"
-templates:
-  - name: "外圆车削"
-    file: "turning/outer_circle.nc.j2"
-    description: "外圆车削循环"
-
-parameters:
-  基础设置:
-    feed_rate:
-      type: number
-      default: 1200
-      min: 100
-      max: 5000
-      unit: mm/min
-      description: 进给速度
-
-defaults:
-  feed_rate: 1200
-  spindle_speed: 2000
-```
+---
+*由 CNC 编程工程师与 Python 专家联合打造，追求精确与极致简洁。*

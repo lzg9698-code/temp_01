@@ -1,0 +1,237 @@
+groups:
+  基础切削参数:
+    description: 通用切削参数，包含进给、转速等
+    items:
+      feed_rate:
+        type: number
+        description: 进给速度
+        default: 1000
+        min: 1
+        max: 10000
+        unit: mm/min
+      spindle_speed:
+        type: number
+        description: 主轴转速
+        default: 2000
+        min: 1
+        max: 20000
+        unit: RPM
+      depth_of_cut:
+        type: number
+        description: 切削深度
+        default: 1.0
+        min: 0.1
+        max: 20
+        unit: mm
+      safety_height:
+        type: number
+        description: 安全高度
+        default: 10.0
+        min: 1
+        max: 100
+        unit: mm
+      drill_feed:
+        type: number
+        description: 钻孔进给速度
+        default: 500
+        min: 1
+        max: 5000
+        unit: mm/min
+      drill_speed:
+        type: string
+        description: 钻孔转速
+        default: '1500'
+        min: 1.0
+        max: 10000.0
+        unit: RPM
+      retract_feed:
+        type: number
+        description: 退刀速度
+        default: 2000
+        min: 1
+        max: 10000
+        unit: mm/min
+  刀具参数:
+    description: 刀具相关参数
+    items:
+      tool_number:
+        type: number
+        description: 刀具号
+        default: 1
+        min: 1
+        max: 99
+        unit: 号
+      tool_diameter:
+        type: number
+        description: 刀具直径
+        default: 10.0
+        min: 0.1
+        max: 200
+        unit: mm
+      drill_diameter:
+        type: number
+        description: 钻头直径
+        default: 8.0
+        min: 0.1
+        max: 100
+        unit: mm
+      raw_diameter:
+        type: number
+        description: '从模板扫描到的变量: raw_diameter'
+        required: false
+  工件参数:
+    description: 工件尺寸与材质参数
+    items:
+      workpiece_length:
+        type: number
+        description: 工件长度
+        default: 100.0
+        min: 0
+        max: 2000
+        unit: mm
+      workpiece_width:
+        type: number
+        description: 工件宽度
+        default: 100.0
+        min: 0
+        max: 2000
+        unit: mm
+      workpiece_height:
+        type: number
+        description: 工件高度
+        default: 30.0
+        min: 0
+        max: 1000
+        unit: mm
+      material_diameter:
+        type: number
+        description: 毛坯直径
+        default: 50.0
+        min: 0
+        max: 1000
+        unit: mm
+      part_length:
+        type: number
+        description: 工件长度(车削)
+        default: 100.0
+        min: 0
+        max: 2000
+        unit: mm
+  车削参数:
+    description: 车削专用参数
+    items:
+      final_diameter:
+        type: number
+        description: 最终直径
+        default: 45.0
+        min: 0
+        max: 1000
+        unit: mm
+      finishing_allowance:
+        type: number
+        description: 精加工余量
+        default: 0.2
+        min: 0
+        max: 5
+        unit: mm
+      groove_width:
+        type: number
+        description: 槽宽
+        default: 3.0
+        min: 0.1
+        max: 50
+        unit: mm
+      groove_depth:
+        type: number
+        description: 槽深
+        default: 5.0
+        min: 0
+        max: 100
+        unit: mm
+      groove_position:
+        type: number
+        description: 槽位置
+        default: 0.0
+        min: -1000
+        max: 1000
+        unit: mm
+  铣削参数:
+    description: 铣削专用参数
+    items:
+      step_over:
+        type: number
+        description: 径向步距
+        default: 5.0
+        min: 0.1
+        max: 100
+        unit: mm
+  位置参数:
+    description: 定位坐标参数
+    items:
+      hole_x:
+        type: number
+        description: X坐标
+        default: 0.0
+        min: -1000
+        max: 1000
+        unit: mm
+      hole_y:
+        type: number
+        description: Y坐标
+        default: 0.0
+        min: -1000
+        max: 1000
+        unit: mm
+      I_SPZ:
+        type: number
+        description: '从模板扫描到的变量: I_SPZ'
+        required: false
+      U_FIRST_MILLING_T:
+        type: number
+        description: '从模板扫描到的变量: U_FIRST_MILLING_T'
+        required: false
+      U_PRET_X:
+        type: number
+        description: '从模板扫描到的变量: U_PRET_X'
+        required: false
+      U_PRET_Z:
+        type: number
+        description: '从模板扫描到的变量: U_PRET_Z'
+        required: false
+      raw_length:
+        type: number
+        description: '从模板扫描到的变量: raw_length'
+        required: false
+      speed_limit:
+        type: number
+        description: '从模板扫描到的变量: speed_limit'
+        required: false
+      spindle_side_z:
+        type: number
+        description: '从模板扫描到的变量: spindle_side_z'
+        required: false
+      tip_height:
+        type: number
+        description: '从模板扫描到的变量: tip_height'
+        required: false
+      tip_model:
+        type: number
+        description: '从模板扫描到的变量: tip_model'
+        required: false
+  钻削参数:
+    description: 钻孔专用参数
+    items:
+      hole_depth:
+        type: number
+        description: 孔深
+        default: 20.0
+        min: 0
+        max: 500
+        unit: mm
+      peck_depth:
+        type: number
+        description: 啄钻深度
+        default: 5.0
+        min: 0.1
+        max: 100
+        unit: mm

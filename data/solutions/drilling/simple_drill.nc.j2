@@ -1,0 +1,13 @@
+{# 简单钻孔NC代码模板 #}
+; 简单钻孔 - 直径{{ drill_diameter }}mm, 深度{{ hole_depth }}mm
+; 进给: {{ feed_rate }} mm/min, 转速: {{ spindle_speed }} RPM
+; 位置: ({{ hole_x }}, {{ hole_y }})
+
+N10 G21 G90 G94 G54      ; 毫米单位, 绝对编程, 每分钟进给, 使用G54坐标系
+N20 T{{ tool_number }} M06              ; 换刀: {{ tool_number }}号
+N30 G43 H{{ tool_number }} Z20.0        ; 刀长补偿, Z轴到安全高度
+N40 M03 S{{ spindle_speed }}     ; 主轴正转
+N50 G81 X{{ hole_x }} Y{{ hole_y }} Z{{ workpiece_height - hole_depth }} R3.0 F{{ feed_rate }}  ; 钻孔循环
+N60 G00 Z50.0            ; 退刀到安全高度
+N70 M05                  ; 主轴停止
+N80 M30                  ; 程序结束
