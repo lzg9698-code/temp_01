@@ -3,13 +3,13 @@ description: "基础铣削NC代码生成，包含平面铣削、轮廓铣削、�
 
 templates:
   - name: "平面铣削"
-    file: "milling/face_mill.nc.j2"
+    file: "face_mill.nc.j2"
     description: "平面铣削"
   - name: "轮廓铣削" 
-    file: "milling/contour.nc.j2"
+    file: "contour.nc.j2"
     description: "轮廓铣削"
   - name: "钻孔"
-    file: "milling/drill.nc.j2"
+    file: "drill.nc.j2"
     description: "钻孔加工"
 
 parameters:

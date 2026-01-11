@@ -147,16 +147,19 @@ template_changed = pyqtSignal(Template)
 - 路径使用`pathlib.Path`进行跨平台兼容
 
 ### 3. 模板系统
+- 方案配置与模板文件在同一目录中，便于管理
 - Jinja2环境配置：`trim_blocks=True`, `lstrip_blocks=True`
 - 自定义过滤器：`format_number`, `pad_zero`
 - 严格模式：未定义变量会报错
+- 支持多目录搜索，直接文件加载
 
 ## 开发工作流
 
 ### 1. 添加新方案
-1. 在`schemes/`目录创建YAML配置文件
-2. 在`templates/`目录创建对应的Jinja2模板文件
-3. 重启应用即可自动加载
+1. 在`templates/`目录创建新的子目录（如 `new_process/`）
+2. 在子目录中创建`scheme.yaml`配置文件
+3. 在同一目录中创建对应的`.nc.j2`模板文件
+4. 重启应用即可自动加载
 
 ### 2. 测试新功能
 1. 修改或创建测试文件

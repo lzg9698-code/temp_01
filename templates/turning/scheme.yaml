@@ -3,13 +3,13 @@ description: "基础车削NC代码生成，包含外圆、端面车削等"
 
 templates:
   - name: "外圆车削"
-    file: "turning/outer_circle.nc.j2"
+    file: "outer_circle.nc.j2"
     description: "外圆车削循环"
   - name: "端面车削" 
-    file: "turning/face.nc.j2"
+    file: "face.nc.j2"
     description: "端面车削循环"
   - name: "切槽"
-    file: "turning/groove.nc.j2"
+    file: "groove.nc.j2"
     description: "切槽加工"
 
 parameters:

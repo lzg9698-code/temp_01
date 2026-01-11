@@ -31,16 +31,55 @@ nc-generator-simple/
 ├── ui.py                # 用户界面
 ├── models.py            # 数据模型
 ├── config.py            # 配置管理
-├── schemes/             # 方案配置（YAML）
-├── templates/           # Jinja2模板
+├── templates/           # 模板包目录
+│   ├── turning/         # 车削模板包
+│   │   ├── scheme.yaml  # 方案配置
+│   │   ├── outer_circle.nc.j2
+│   │   ├── face.nc.j2
+│   │   └── groove.nc.j2
+│   ├── milling/         # 铣削模板包
+│   │   ├── scheme.yaml  # 方案配置
+│   │   ├── face_mill.nc.j2
+│   │   ├── contour.nc.j2
+│   │   └── drill.nc.j2
+│   └── drilling/        # 钻孔模板包
+│       ├── scheme.yaml  # 方案配置
+│       ├── simple_drill.nc.j2
+│       ├── deep_drill.j2
+│       └── ream.nc.j2
 └── exports/             # 输出目录
 ```
 
 ## 添加新方案
 
-1. 在 `schemes/` 目录创建YAML文件
-2. 在 `templates/` 目录创建Jinja2模板
-3. 重启应用即可加载
+1. 在 `templates/` 目录创建新的子目录（如 `new_process/`）
+2. 在子目录中创建 `scheme.yaml` 配置文件
+3. 在同一目录中创建对应的 `.nc.j2` 模板文件
+4. 重启应用即可自动加载
+
+### 方案配置示例
+
+```yaml
+name: "新加工工艺"
+description: "新的NC代码生成工艺"
+
+templates:
+  - name: "工艺名称"
+    file: "template_file.nc.j2"
+    description: "工艺描述"
+
+parameters:
+  参数组名:
+    参数名:
+      type: number|string|int|bool|select
+      default: 默认值
+      min: 最小值  # number类型
+      max: 最大值  # number类型
+      description: "参数描述"
+
+defaults:
+  参数名: 默认值
+```
 
 ## 方案配置示例
 

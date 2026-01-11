@@ -3,13 +3,13 @@ description: "基础钻孔NC代码生成，包含钻孔、铰孔、攻丝等"
 
 templates:
   - name: "简单钻孔"
-    file: "drilling/simple_drill.nc.j2"
+    file: "simple_drill.nc.j2"
     description: "简单钻孔循环"
   - name: "深孔钻孔" 
-    file: "drilling/deep_drill.nc.j2"
+    file: "deep_drill.j2"
     description: "深孔钻孔循环"
   - name: "铰孔"
-    file: "drilling/ream.nc.j2"
+    file: "ream.nc.j2"
     description: "铰孔加工"
 
 parameters:
