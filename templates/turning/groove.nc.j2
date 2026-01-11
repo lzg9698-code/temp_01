@@ -1,0 +1,23 @@
+{# 切槽NC代码模板 #}
+; 切槽加工 - 宽度{{ groove_width }}mm, 深度{{ groove_depth }}mm
+; 进给: {{ feed_rate }} mm/min, 转速: {{ spindle_speed }} RPM
+; 位置: {{ groove_position }}mm
+
+N10 G90 G54 G21        ; 绝对坐标, 工件坐标系, 公制
+N20 T{{ tool_number }}01 M6           ; 选择刀具{{ tool_number }}
+N30 G97 S{{ spindle_speed }} M3  ; 恒转速, 主轴正转
+N40 G00 X{{ material_diameter + 5 }} Z{{ groove_position }}  ; 快速定位
+N50 G01 X{{ material_diameter - groove_depth * 2 }} F{{ feed_rate }}  ; 切槽到深度
+
+{% if groove_width > 3 %}
+N60 G00 X{{ material_diameter + 5 }}  ; 退刀
+N70 Z{{ groove_position - groove_width + 2 }}  ; 移动到下一个位置
+N80 G01 X{{ material_diameter - groove_depth * 2 }}  ; 切第二刀
+N90 G00 X{{ material_diameter + 5 }}  ; 退刀
+N100 Z{{ groove_position - groove_width + 1 }}  ; 移动到下一个位置  
+N110 G01 X{{ material_diameter - groove_depth * 2 }}  ; 切第三刀
+{% endif %}
+
+N120 G00 X{{ material_diameter + 5 }} Z100  ; 退刀到安全位置
+N130 M05                  ; 主轴停止
+N140 M30                  ; 程序结束

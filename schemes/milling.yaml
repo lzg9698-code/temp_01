@@ -1,0 +1,109 @@
+name: "铣削加工"
+description: "基础铣削NC代码生成，包含平面铣削、轮廓铣削、钻孔等"
+
+templates:
+  - name: "平面铣削"
+    file: "milling/face_mill.nc.j2"
+    description: "平面铣削"
+  - name: "轮廓铣削" 
+    file: "milling/contour.nc.j2"
+    description: "轮廓铣削"
+  - name: "钻孔"
+    file: "milling/drill.nc.j2"
+    description: "钻孔加工"
+
+parameters:
+  基础设置:
+    feed_rate:
+      type: number
+      default: 800
+      min: 50
+      max: 3000
+      unit: mm/min
+      description: 进给速度
+    
+    spindle_speed:
+      type: number
+      default: 3000
+      min: 500
+      max: 12000
+      unit: RPM
+      description: 主轴转速
+    
+    tool_diameter:
+      type: number
+      default: 10
+      min: 1
+      max: 50
+      unit: mm
+      description: 刀具直径
+  
+  工件参数:
+    workpiece_length:
+      type: number
+      default: 100
+      min: 10
+      max: 500
+      unit: mm
+      description: 工件长度
+    
+    workpiece_width:
+      type: number
+      default: 80
+      min: 10
+      max: 400
+      unit: mm
+      description: 工件宽度
+    
+    workpiece_height:
+      type: number
+      default: 20
+      min: 5
+      max: 100
+      unit: mm
+      description: 工件高度
+  
+  加工参数:
+    depth_of_cut:
+      type: number
+      default: 2.0
+      min: 0.1
+      max: 10
+      unit: mm
+      description: 轴向切深
+    
+    step_over:
+      type: number
+      default: 8.0
+      min: 0.5
+      max: 50
+      unit: mm
+      description: 径向步距
+    
+    safety_height:
+      type: number
+      default: 5.0
+      min: 1
+      max: 50
+      unit: mm
+      description: 安全高度
+    
+    hole_depth:
+      type: number
+      default: 15.0
+      min: 1
+      max: 100
+      unit: mm
+      description: 孔深
+
+defaults:
+  feed_rate: 800
+  spindle_speed: 3000
+  tool_diameter: 10
+  workpiece_length: 100
+  workpiece_width: 80
+  workpiece_height: 20
+  depth_of_cut: 2.0
+  step_over: 8.0
+  safety_height: 5.0
+  hole_depth: 15.0

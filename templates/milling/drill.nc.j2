@@ -1,0 +1,24 @@
+{# 铣削钻孔NC代码模板 #}
+; 铣削钻孔 - 刀径{{ tool_diameter }}mm, 深度{{ hole_depth }}mm
+; 进给: {{ feed_rate }} mm/min, 转速: {{ spindle_speed }} RPM
+
+N10 G90 G54 G17 G21   ; 绝对坐标, 工件坐标系, XY平面, 公制
+N20 T01 M6             ; 选择铣刀
+N30 G43 H01 Z{{ safety_height }}  ; 刀长补偿, Z轴到安全高度
+N40 M03 S{{ spindle_speed }}     ; 主轴正转
+
+N50 G00 X{{ workpiece_length/2 }} Y{{ workpiece_width/2 }}  ; 快速定位到中心
+N60 G01 Z{{ depth_of_cut }} F{{ feed_rate }}  ; 下刀到第一层
+
+{% set passes = ((hole_depth - depth_of_cut) / depth_of_cut) | round(0, 'ceil') | int %}
+{% for i in range(passes) %}
+N{{ 70 + i*20 }} G01 Z{{ (i + 1) * depth_of_cut }} F{{ feed_rate }}  ; 分层切削
+{% if i < passes - 1 %}
+N{{ 80 + i*20 }} G00 Z{{ safety_height }}  ; 抬刀排屑
+N{{ 90 + i*20 }} G01 Z{{ (i + 1) * depth_of_cut + 1 }}  ; 重新下刀
+{% endif %}
+{% endfor %}
+
+N{{ 70 + (passes-1)*20 + 30 }} G00 Z{{ safety_height }}  ; Z轴抬到安全高度
+N{{ 70 + (passes-1)*20 + 40 }} M05                 ; 主轴停止
+N{{ 70 + (passes-1)*20 + 50 }} M30                 ; 程序结束

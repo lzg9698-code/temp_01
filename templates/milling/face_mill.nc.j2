@@ -1,0 +1,27 @@
+{# 平面铣削NC代码模板 #}
+; 平面铣削 - {{ workpiece_length }}x{{ workpiece_width }}mm
+; 进给: {{ feed_rate }} mm/min, 转速: {{ spindle_speed }} RPM
+; 刀径: {{ tool_diameter }}mm, 切深: {{ depth_of_cut }}mm
+; 步距: {{ step_over }}mm
+
+N10 G90 G54 G17 G21   ; 绝对坐标, 工件坐标系, XY平面, 公制
+N20 T01 M6             ; 选择刀具1
+N30 G43 H01 Z{{ safety_height }}  ; 刀长补偿, Z轴到安全高度
+N40 M03 S{{ spindle_speed }}     ; 主轴正转
+
+N50 G00 X-{{ tool_diameter }} Y-{{ tool_diameter }}  ; 快速定位到起点
+N60 G01 Z{{ depth_of_cut }} F{{ feed_rate }}  ; 下刀到切削深度
+
+N70 G01 X{{ workpiece_length + tool_diameter }}  ; 第一刀
+N80 G00 Y{{ step_over }}  ; Y方向步进
+N90 G01 X-{{ tool_diameter }}  ; 第二刀
+
+{% set passes = ((workpiece_width + tool_diameter * 2) / step_over) | round(0, 'ceil') | int %}
+{% for i in range(2, passes) %}
+N{{ 90 + (i-1)*10 }} G00 Y{{ i * step_over }}  ; Y方向步进
+N{{ 100 + (i-1)*10 }} G01 {% if i % 2 == 0 %}X{{ workpiece_length + tool_diameter }}{% else %}X-{{ tool_diameter }}{% endif %}  ; 切削
+{% endfor %}
+
+N{{ 90 + (passes-1)*10 + 20 }} G00 Z{{ safety_height }}  ; Z轴抬到安全高度
+N{{ 90 + (passes-1)*10 + 30 }} M05  ; 主轴停止
+N{{ 90 + (passes-1)*10 + 40 }} M30  ; 程序结束

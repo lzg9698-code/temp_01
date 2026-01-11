@@ -1,0 +1,24 @@
+{# 外圆车削NC代码模板 #}
+; 外圆车削 - {{ material_diameter }}mm -> {{ final_diameter }}mm
+; 进给: {{ feed_rate }} mm/min, 转速: {{ spindle_speed }} RPM
+; 切深: {{ depth_of_cut }}mm, 余量: {{ finishing_allowance }}mm
+; 工件长度: {{ part_length }}mm
+
+N10 G90 G54 G21        ; 绝对坐标, 工件坐标系, 公制
+N20 T{{ tool_number }}01 M6           ; 选择刀具{{ tool_number }}
+N30 G97 S{{ spindle_speed }} M3  ; 恒转速, 主轴正转
+N40 G00 X{{ material_diameter + 5 }} Z5  ; 快速定位
+N50 G96 S150 M3          ; 恒线速150m/min (粗车)
+
+N60 G71 U{{ depth_of_cut }} R{{ depth_of_cut * 2 }}  ; 粗车循环
+N70 G71 P80 Q120 U{{ finishing_allowance }} F{{ feed_rate }}
+N80 G00 X{{ final_diameter }}      ; 轮廓起点
+N90 G01 Z0              ; 开始车削
+N100 X{{ material_diameter }} Z-{{ part_length }}  ; 车锥度
+N110 Z-{{ part_length }}           ; 车外圆
+N120 U2                  ; 退刀
+
+N130 G70 P80 Q120        ; 精车循环
+N140 G00 X{{ material_diameter + 5 }} Z100      ; 退刀到安全位置
+N150 M05                  ; 主轴停止
+N160 M30                  ; 程序结束

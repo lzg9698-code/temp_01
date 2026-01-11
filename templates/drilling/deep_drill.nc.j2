@@ -1,0 +1,15 @@
+{# 深孔钻孔NC代码模板 #}
+; 深孔钻孔 - 直径{{ drill_diameter }}mm, 深度{{ hole_depth }}mm
+; 进给: {{ drill_feed }} mm/min, 转速: {{ drill_speed }} RPM
+; 啄钻深度: {{ peck_depth }}mm
+
+N10 G90 G54 G17 G21   ; 绝对坐标, 工件坐标系, XY平面, 公制
+N20 T01 M6             ; 选择钻头
+N30 G43 H01 Z20.0      ; 刀长补偿, Z轴到安全高度
+N40 M03 S{{ drill_speed }}     ; 主轴正转
+
+N50 G83 X{{ hole_x }} Y{{ hole_y }} Z{{ workpiece_height - hole_depth }} R3.0 Q{{ peck_depth }} F{{ drill_feed }}  ; 深孔钻孔循环
+N60 G80                 ; 取消循环
+N70 G00 Z20.0          ; Z轴退刀
+N80 M05                 ; 主轴停止
+N90 M30                 ; 程序结束
