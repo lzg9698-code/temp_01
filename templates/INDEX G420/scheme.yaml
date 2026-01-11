@@ -1,103 +1,92 @@
-name: "INDEX G420"
-description: "三个通道主程序及全局参数"
-
+name: INDEX G420
+description: 三个通道主程序及全局参数
 templates:
-  - name: "1_0.MPF"
-    file: "1_0.MPF.j2"
-    description: "一通道"
-  - name: "2_0.MPF" 
-    file: "2_0.MPF.j2"
-    description: "二通道"
-  - name: "3_0.MPF"
-    file: "3_0.MPF.j2"
-    description: "三通道"
-  - name: "DG_CAL_IR9.SPF"
-    file: "DG_CAL_IR9.SPF.j2"
-    description: "全局参数"
-
+- name: 1_0.MPF
+  file: 1_0.MPF.j2
+  description: 一通道
+- name: 2_0.MPF
+  file: 2_0.MPF.j2
+  description: 二通道
+- name: 3_0.MPF
+  file: 3_0.MPF.j2
+  description: 三通道
+- name: 全局参数配置
+  file: DG_CAL_IR9.SPF.j2
+  description: ''
 parameters:
   基础设置:
     drill_feed:
       type: number
-      default: 500
+      description: 钻孔进给速度
+      default: '500'
       min: 50
       max: 2000
       unit: mm/min
-      description: 钻孔进给速度
-    
     drill_speed:
       type: number
-      default: 1500
+      description: 钻孔转速
+      default: '1500'
       min: 200
       max: 8000
       unit: RPM
-      description: 钻孔转速
-    
     retract_feed:
       type: number
-      default: 2000
+      description: 退刀速度
+      default: '2000'
       min: 500
       max: 5000
       unit: mm/min
-      description: 退刀速度
-  
   钻孔参数:
     drill_diameter:
       type: number
-      default: 8.0
+      description: 钻头直径
+      default: '8.0'
       min: 0.5
       max: 50
       unit: mm
-      description: 钻头直径
-    
     hole_depth:
       type: number
-      default: 20.0
+      description: 孔深
+      default: '20.0'
       min: 1
       max: 200
       unit: mm
-      description: 孔深
-    
     peck_depth:
       type: number
-      default: 5.0
+      description: 啄钻深度
+      default: '5.0'
       min: 1
       max: 20
       unit: mm
-      description: 啄钻深度
-  
   位置参数:
     hole_x:
       type: number
-      default: 0.0
+      description: X坐标
+      default: '0.0'
       min: -500
       max: 500
       unit: mm
-      description: X坐标
-    
     hole_y:
       type: number
-      default: 0.0
+      description: Y坐标
+      default: '0.0'
       min: -500
       max: 500
       unit: mm
-      description: Y坐标
-    
     workpiece_height:
       type: number
-      default: 30.0
+      description: 工件高度
+      default: '30.0'
       min: 5
       max: 200
       unit: mm
-      description: 工件高度
-
 defaults:
-  drill_feed: 500
-  drill_speed: 1500
-  retract_feed: 2000
-  drill_diameter: 8.0
-  hole_depth: 20.0
-  peck_depth: 5.0
-  hole_x: 0.0
-  hole_y: 0.0
-  workpiece_height: 30.0
+  drill_feed: '500'
+  drill_speed: '1500'
+  retract_feed: '2000'
+  drill_diameter: '8.0'
+  hole_depth: '20.0'
+  peck_depth: '5.0'
+  hole_x: '0.0'
+  hole_y: '0.0'
+  workpiece_height: '30.0'

@@ -3,6 +3,7 @@
 提供可视化编辑scheme.yaml的用户界面。
 """
 
+import os
 from typing import Optional, Dict, Any
 from PyQt6.QtWidgets import (
     QDialog,
@@ -122,8 +123,8 @@ class TemplatesWidget(QWidget):
         # 操作按钮
         button_layout = QHBoxLayout()
 
-        self.add_btn = QPushButton("添加模板")
-        self.add_btn.clicked.connect(self.add_template)
+        self.add_btn = QPushButton("扫描模板")
+        self.add_btn.clicked.connect(self.scan_templates)
         button_layout.addWidget(self.add_btn)
 
         self.remove_btn = QPushButton("删除模板")
@@ -132,6 +133,11 @@ class TemplatesWidget(QWidget):
 
         button_layout.addStretch()
         layout.addLayout(button_layout)
+
+        # 状态标签
+        self.status_label = QLabel("就绪")
+        self.status_label.setStyleSheet("color: #666; font-style: italic;")
+        layout.addWidget(self.status_label)
 
     def load_templates(self):
         """加载模板列表"""
@@ -188,24 +194,106 @@ class TemplatesWidget(QWidget):
             if template:
                 template.description = self.description_edit.toPlainText()
 
-    def add_template(self):
-        """添加模板"""
-        template = TemplateDef(
-            name="新模板", file="new_template.nc.j2", description="新模板描述"
-        )
+    def scan_templates(self):
+        """扫描模板文件"""
+        self.status_label.setText("正在扫描模板文件...")
+        self.status_label.setStyleSheet("color: blue; font-weight: bold;")
 
+        # 获取模板包目录
+        template_dir = None
+        if self.scheme.file_path:
+            template_dir = os.path.dirname(self.scheme.file_path)
+
+        if not template_dir or not os.path.exists(template_dir):
+            self.status_label.setText("无法确定模板目录位置")
+            self.status_label.setStyleSheet("color: red;")
+            QMessageBox.warning(self, "警告", "无法确定模板目录位置")
+            return
+
+        # 扫描.j2文件
         try:
-            self.scheme.add_template(template)
+            import glob
+
+            j2_files = glob.glob(os.path.join(template_dir, "*.j2"))
+            j2_files.extend(glob.glob(os.path.join(template_dir, "*.nc.j2")))
+            j2_files.extend(glob.glob(os.path.join(template_dir, "*.jinja2")))
+
+            if not j2_files:
+                self.status_label.setText(f"目录 {template_dir} 中未找到模板文件")
+                self.status_label.setStyleSheet("color: orange;")
+                QMessageBox.information(
+                    self, "扫描结果", f"在目录 {template_dir} 中未找到模板文件"
+                )
+                return
+
+            # 获取已存在的模板文件列表
+            existing_files = {template.file for template in self.scheme.templates}
+
+            # 处理找到的文件
+            new_templates = []
+            skipped_files = []
+
+            for file_path in j2_files:
+                file_name = os.path.basename(file_path)
+
+                # 跳过scheme.yaml文件
+                if file_name == "scheme.yaml":
+                    continue
+
+                if file_name in existing_files:
+                    skipped_files.append(file_name)
+                    continue
+
+                # 创建模板对象
+                template_name = (
+                    os.path.splitext(file_name)[0]
+                    .replace("_", " ")
+                    .replace("-", " ")
+                    .title()
+                )
+                template = TemplateDef(
+                    name=template_name,
+                    file=file_name,
+                    description=f"自动扫描的模板: {file_name}",
+                )
+
+                try:
+                    self.scheme.add_template(template)
+                    new_templates.append(template_name)
+                except ValueError as e:
+                    skipped_files.append(f"{file_name} ({e})")
+
+            # 重新加载模板列表
             self.load_templates()
 
-            # 选中新添加的模板
-            for i in range(self.template_list.count()):
-                item = self.template_list.item(i)
-                if item.data(Qt.ItemDataRole.UserRole) == template:
-                    self.template_list.setCurrentItem(item)
-                    break
-        except ValueError as e:
-            QMessageBox.warning(self, "错误", str(e))
+            # 更新状态
+            self.status_label.setText(
+                f"扫描完成：发现 {len(j2_files)} 个文件，新增 {len(new_templates)} 个模板"
+            )
+            self.status_label.setStyleSheet("color: green; font-weight: bold;")
+
+            # 显示扫描结果
+            result_message = f"扫描完成！\n\n"
+            if new_templates:
+                result_message += f"新添加模板 ({len(new_templates)}个):\n"
+                for name in new_templates:
+                    result_message += f"  ✓ {name}\n"
+
+            if skipped_files:
+                result_message += f"\n已存在模板 ({len(skipped_files)}个):\n"
+                for name in skipped_files:
+                    result_message += f"  - {name}\n"
+
+            QMessageBox.information(self, "扫描结果", result_message)
+
+            # 如果有新模板，选第一个
+            if new_templates and self.template_list.count() > 0:
+                self.template_list.setCurrentRow(0)
+
+        except Exception as e:
+            self.status_label.setText(f"扫描失败: {str(e)}")
+            self.status_label.setStyleSheet("color: red;")
+            QMessageBox.critical(self, "错误", f"扫描模板文件失败:\n{e}")
 
     def remove_template(self):
         """删除模板"""
