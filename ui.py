@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QScrollArea,
     QFileDialog,
+    QDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
 from PyQt6.QtGui import (
@@ -113,6 +114,7 @@ class SchemeWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._schemes: list[Scheme] = []
+        self._current_scheme: Scheme | None = None  # 当前选择的方案
         self.desc_label = QLabel()  # Initialize to avoid linter errors
         self._setup_ui()
 
@@ -136,6 +138,12 @@ class SchemeWidget(QWidget):
         self.desc_label.setStyleSheet("color: #666; font-style: italic;")
         layout.addWidget(self.desc_label)
 
+        # Edit Scheme Button
+        self.edit_btn = QPushButton("编辑方案")
+        self.edit_btn.setEnabled(False)  # 初始禁用
+        self.edit_btn.clicked.connect(self.on_edit_scheme)
+        layout.addWidget(self.edit_btn)
+
         layout.addStretch()
 
     def set_schemes(self, schemes: list[Scheme]):
@@ -158,6 +166,32 @@ class SchemeWidget(QWidget):
                     scheme.description or "No description available."
                 )
             self.scheme_selected.emit(scheme)
+            self._current_scheme = scheme
+            self.edit_btn.setEnabled(True)  # 启用编辑按钮
+
+    def on_edit_scheme(self):
+        """编辑当前方案"""
+        if self._current_scheme:
+            try:
+                from scheme_editor import SchemeEditorDialog
+
+                editor = SchemeEditorDialog(self._current_scheme, self)
+
+                # 设置与主窗口相同的位置和大小
+                main_window = self.parent()
+                while main_window and not isinstance(main_window, QMainWindow):
+                    main_window = main_window.parent()
+
+                if main_window:
+                    editor.setGeometry(main_window.geometry())
+
+                if editor.exec() == QDialog.DialogCode.Accepted:
+                    # 编辑完成，通知主界面重新加载方案
+                    if hasattr(self.parent(), "reload_schemes"):
+                        self.parent().reload_schemes()
+
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"打开编辑器失败:\n{e}")
 
 
 # =============================================================================
@@ -505,6 +539,10 @@ class MainWindow(QMainWindow):
         """
         schemes = self.engine.load_schemes()
         self.scheme_widget.set_schemes(schemes)
+
+    def reload_schemes(self):
+        """重新加载方案（用于编辑器更新后）"""
+        self._load_data()
 
     def _on_scheme_selected(self, scheme: Scheme):
         """Handle scheme selection: load params and reset preview."""
