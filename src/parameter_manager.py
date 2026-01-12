@@ -4,11 +4,11 @@
 采用单例模式确保全局唯一性。
 """
 
-import yaml
 import os
+import yaml
+from dataclasses import asdict
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
-from dataclasses import asdict
 
 from models import (
     ParameterLibrary,
@@ -320,7 +320,12 @@ class ParameterManager:
 
         try:
             group.add_parameter(param)
-            return self.save_library()
+            if self.save_library():
+                return True
+            else:
+                # 回滚
+                group.remove_parameter(param.name)
+                return False
         except ValueError as e:
             print(f"添加参数失败: {e}")
             return False
@@ -353,10 +358,29 @@ class ParameterManager:
                     if new_param.name in group.parameters:
                         print(f"参数名 '{new_param.name}' 已存在")
                         return False
-                    group.remove_parameter(old_name)
-                
-                group.parameters[new_param.name] = new_param
-                return self.save_library()
+                    # 备份旧参数
+                    old_param = group.parameters[old_name]
+                    del group.parameters[old_name]
+                    group.parameters[new_param.name] = new_param
+                    
+                    if self.save_library():
+                        return True
+                    else:
+                        # 回滚
+                        del group.parameters[new_param.name]
+                        group.parameters[old_name] = old_param
+                        return False
+                else:
+                    # 名称没变
+                    old_param = group.parameters[old_name]
+                    group.parameters[new_param.name] = new_param
+                    if self.save_library():
+                        return True
+                    else:
+                        # 回滚
+                        group.parameters[old_name] = old_param
+                        return False
+
             return False
         except Exception as e:
             print(f"更新参数失败: {e}")
@@ -381,13 +405,82 @@ class ParameterManager:
             return False
 
         try:
-            removed = group.remove_parameter(param_name)
-            if removed:
-                return self.save_library()
+            # 备份
+            if param_name in group.parameters:
+                removed_param = group.parameters[param_name]
+                del group.parameters[param_name]
+                
+                if self.save_library():
+                    return True
+                else:
+                    # 回滚
+                    group.parameters[param_name] = removed_param
+                    return False
             return False
         except Exception as e:
             print(f"删除参数失败: {e}")
             return False
+
+    def move_parameter(
+        self, from_group_name: str, to_group_name: str, param_name: str, new_param: GlobalParameter = None
+    ) -> bool:
+        """移动参数到另一个组（原子操作）
+
+        Args:
+            from_group_name: 源参数组
+            to_group_name: 目标参数组
+            param_name: 参数名
+            new_param: 如果是移动且修改，提供新的参数对象；如果为None，使用原参数
+        
+        Returns:
+            是否成功
+        """
+        if not self._library:
+            return False
+
+        from_group = self._library.get_group(from_group_name)
+        to_group = self._library.get_group(to_group_name)
+
+        if not from_group or not to_group:
+            print(f"源组或目标组不存在")
+            return False
+
+        if param_name not in from_group.parameters:
+            print(f"参数 '{param_name}' 不在源组 '{from_group_name}' 中")
+            return False
+            
+        # 准备移动的参数
+        param_to_move = new_param if new_param else from_group.parameters[param_name]
+        
+        # 检查目标组是否已有同名参数 (如果不是重命名且同名)
+        # 如果是重命名，名字必然不同于 old_name (unless logic allows, but param_to_move.name handles it)
+        # 这里 logic: param_to_move.name is the name in target group
+        if param_to_move.name in to_group.parameters:
+             print(f"目标组 '{to_group_name}' 已存在参数 '{param_to_move.name}'")
+             return False
+
+        # 内存中执行移动
+        original_param = from_group.parameters[param_name]
+        del from_group.parameters[param_name]
+        to_group.add_parameter(param_to_move)
+
+        # 尝试保存
+        try:
+            if self.save_library():
+                return True
+            else:
+                # 保存失败，回滚
+                del to_group.parameters[param_to_move.name]
+                from_group.parameters[param_name] = original_param
+                return False
+        except Exception as e:
+            print(f"移动参数保存失败: {e}")
+            # 回滚
+            if param_to_move.name in to_group.parameters:
+                del to_group.parameters[param_to_move.name]
+            from_group.parameters[param_name] = original_param
+            return False
+
 
     def import_from_scheme(
         self, scheme_name: str, parameters: Dict[str, Any]

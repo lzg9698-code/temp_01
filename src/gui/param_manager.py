@@ -5,8 +5,8 @@
 
 import os
 import sys
-from pathlib import Path
-from typing import Optional, Dict, Any, List
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtGui import QFont, QAction
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -36,8 +36,8 @@ from PyQt6.QtWidgets import (
     QMenuBar,
     QStatusBar,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from PyQt6.QtGui import QFont, QAction
+from pathlib import Path
+from typing import Optional, Dict, Any, List, Tuple
 
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -74,9 +74,17 @@ class NoScrollDoubleSpinBox(QDoubleSpinBox):
 class ParameterEditDialog(QDialog):
     """参数编辑对话框"""
 
-    def __init__(self, param: Optional[GlobalParameter] = None, parent=None):
+    def __init__(
+        self,
+        param: Optional[GlobalParameter] = None,
+        group_names: List[str] = None,
+        current_group: str = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.param = param
+        self.group_names = group_names or []
+        self.current_group = current_group
         self.setup_ui()
         self.load_parameter_data()
 
@@ -90,6 +98,13 @@ class ParameterEditDialog(QDialog):
         # 参数名
         self.name_edit = QLineEdit()
         layout.addRow("参数名:", self.name_edit)
+
+        # 参数组
+        self.group_combo = QComboBox()
+        self.group_combo.addItems(self.group_names)
+        if self.current_group and self.current_group in self.group_names:
+            self.group_combo.setCurrentText(self.current_group)
+        layout.addRow("参数组:", self.group_combo)
 
         # 参数类型
         self.type_combo = QComboBox()
@@ -129,17 +144,64 @@ class ParameterEditDialog(QDialog):
         self.required_check = QCheckBox()
         layout.addRow("必填:", self.required_check)
 
-        # 选项（select类型专用）
-        self.options_edit = QTextEdit()
-        self.options_edit.setMaximumHeight(60)
-        self.options_edit.setPlaceholderText("每行一个选项")
-        layout.addRow("选项:", self.options_edit)
+        # 选项编辑器（select类型专用）
+        self.options_group = QGroupBox("选项列表")
+        options_layout = QVBoxLayout(self.options_group)
+        
+        # 选项列表
+        self.options_list = QListWidget()
+        self.options_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        self.options_list.currentItemChanged.connect(self.on_option_selected)
+        options_layout.addWidget(self.options_list)
+        
+        # 选项编辑区
+        edit_layout = QHBoxLayout()
+        self.opt_label_edit = QLineEdit()
+        self.opt_label_edit.setPlaceholderText("显示名称 (Label)")
+        edit_layout.addWidget(self.opt_label_edit)
+        
+        self.opt_value_edit = QLineEdit()
+        self.opt_value_edit.setPlaceholderText("实际值 (Value)")
+        edit_layout.addWidget(self.opt_value_edit)
+
+        self.opt_type_combo = QComboBox()
+        self.opt_type_combo.addItems(["String", "Number", "Integer", "Boolean"])
+        self.opt_type_combo.setFixedWidth(80)
+        edit_layout.addWidget(self.opt_type_combo)
+        
+        options_layout.addLayout(edit_layout)
+        
+        # 操作按钮
+        btn_layout = QHBoxLayout()
+        self.add_opt_btn = QPushButton("添加")
+        self.add_opt_btn.clicked.connect(self.add_option)
+        btn_layout.addWidget(self.add_opt_btn)
+        
+        self.update_opt_btn = QPushButton("更新")
+        self.update_opt_btn.clicked.connect(self.update_option)
+        self.update_opt_btn.setEnabled(False)
+        btn_layout.addWidget(self.update_opt_btn)
+        
+        self.remove_opt_btn = QPushButton("删除")
+        self.remove_opt_btn.clicked.connect(self.remove_option)
+        self.remove_opt_btn.setEnabled(False)
+        btn_layout.addWidget(self.remove_opt_btn)
+
+        self.set_default_btn = QPushButton("设为默认")
+        self.set_default_btn.clicked.connect(self.set_current_as_default)
+        self.set_default_btn.setEnabled(False)
+        btn_layout.addWidget(self.set_default_btn)
+        
+        options_layout.addLayout(btn_layout)
+        
+        layout.addRow(self.options_group)
 
         # 按钮
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
         button_box.rejected.connect(self.reject)
         layout.addRow(button_box)
 
@@ -167,10 +229,127 @@ class ParameterEditDialog(QDialog):
         self.desc_edit.setText(self.param.description)
         self.required_check.setChecked(self.param.required)
 
+        # Clear existing items first to avoid duplication if called multiple times
+        self.options_list.clear()
         if self.param.options:
-            self.options_edit.setPlainText("\\n".join(self.param.options))
+            for opt in self.param.options:
+                if isinstance(opt, dict) and "label" in opt and "value" in opt:
+                    val = opt['value']
+                    type_str = "String"
+                    if isinstance(val, int): type_str = "Integer"
+                    elif isinstance(val, float): type_str = "Number"
+                    elif isinstance(val, bool): type_str = "Boolean"
+                    
+                    item = QListWidgetItem(f"{opt['label']} ({val}) [{type_str}]")
+                    item.setData(Qt.ItemDataRole.UserRole, opt)
+                else:
+                    item = QListWidgetItem(f"{str(opt)} (String)")
+                    item.setData(Qt.ItemDataRole.UserRole, {"label": str(opt), "value": str(opt)})
+                self.options_list.addItem(item)
 
         self.on_type_changed()
+
+    def on_option_selected(self, current: QListWidgetItem, previous: QListWidgetItem):
+        """选项选择处理"""
+        if current:
+            data = current.data(Qt.ItemDataRole.UserRole)
+            self.opt_label_edit.setText(str(data["label"]))
+            
+            val = data["value"]
+            self.opt_value_edit.setText(str(val))
+            
+            # Set type combo based on value type
+            if isinstance(val, bool):
+                self.opt_type_combo.setCurrentText("Boolean")
+            elif isinstance(val, int):
+                self.opt_type_combo.setCurrentText("Integer")
+            elif isinstance(val, float):
+                self.opt_type_combo.setCurrentText("Number")
+            else:
+                self.opt_type_combo.setCurrentText("String")
+                
+            self.update_opt_btn.setEnabled(True)
+            self.remove_opt_btn.setEnabled(True)
+            self.set_default_btn.setEnabled(True)
+        else:
+            self.opt_label_edit.clear()
+            self.opt_value_edit.clear()
+            self.update_opt_btn.setEnabled(False)
+            self.remove_opt_btn.setEnabled(False)
+            self.set_default_btn.setEnabled(False)
+
+    def set_current_as_default(self):
+        """将当前选中项设为默认值"""
+        current_item = self.options_list.currentItem()
+        if current_item:
+            data = current_item.data(Qt.ItemDataRole.UserRole)
+            self.default_edit.setText(str(data["value"]))
+
+    def _parse_value(self, text: str, type_str: str) -> Any:
+        try:
+            if type_str == "Integer":
+                return int(text)
+            elif type_str == "Number":
+                return float(text)
+            elif type_str == "Boolean":
+                return text.lower() in ("true", "1", "yes", "on")
+            else:
+                return text
+        except:
+            return text
+
+    def add_option(self):
+        """添加选项"""
+        label = self.opt_label_edit.text().strip()
+        value_text = self.opt_value_edit.text().strip()
+        type_str = self.opt_type_combo.currentText()
+        
+        if not label:
+            QMessageBox.warning(self, "警告", "显示名称不能为空")
+            return
+            
+        if not value_text:
+            value_text = label  # 如果没有值，默认与标签相同
+            
+        value = self._parse_value(value_text, type_str)
+            
+        opt_data = {"label": label, "value": value}
+        item = QListWidgetItem(f"{label} ({value}) [{type_str}]")
+        item.setData(Qt.ItemDataRole.UserRole, opt_data)
+        self.options_list.addItem(item)
+        
+        # 清空输入
+        self.opt_label_edit.clear()
+        self.opt_value_edit.clear()
+
+    def update_option(self):
+        """更新选项"""
+        current_item = self.options_list.currentItem()
+        if not current_item:
+            return
+            
+        label = self.opt_label_edit.text().strip()
+        value_text = self.opt_value_edit.text().strip()
+        type_str = self.opt_type_combo.currentText()
+        
+        if not label:
+            QMessageBox.warning(self, "警告", "显示名称不能为空")
+            return
+            
+        if not value_text:
+            value_text = label
+
+        value = self._parse_value(value_text, type_str)
+
+        opt_data = {"label": label, "value": value}
+        current_item.setText(f"{label} ({value}) [{type_str}]")
+        current_item.setData(Qt.ItemDataRole.UserRole, opt_data)
+
+    def remove_option(self):
+        """删除选项"""
+        current_row = self.options_list.currentRow()
+        if current_row >= 0:
+            self.options_list.takeItem(current_row)
 
     def on_type_changed(self):
         """类型变更处理"""
@@ -198,17 +377,26 @@ class ParameterEditDialog(QDialog):
                 elif "单位" in label_text:
                     widget.widget().setVisible(show_unit)
                     label.widget().setVisible(show_unit)
-                elif "选项" in label_text:
-                    widget.widget().setVisible(show_options)
-                    label.widget().setVisible(show_options)
+                elif "选项" in label_text or "选项列表" in label_text: # Handle both old label and new group box title scenarios if needed, currently matching logic is a bit rigid in on_type_changed potentially.
+                    # Wait, the iteration logic in on_type_changed iterates form rows.
+                    # My new widget is a GroupBox added via addRow, but addRow(QWidget) puts it in FieldRole with empty Label?
+                    # Or addRow(widget) creates a spanning widget.
+                    # Let's check how I added it: layout.addRow(self.options_group)
+                    # This means it might not have a LabelRole item.
+                    pass
 
-    def get_parameter(self) -> Optional[GlobalParameter]:
-        """获取编辑后的参数"""
+        # Dedicated logic for options group visibility since it's a spanning widget likely
+        self.options_group.setVisible(show_options)
+
+    def get_parameter(self) -> Tuple[Optional[GlobalParameter], str]:
+        """获取编辑后的参数和组名"""
         try:
             name = self.name_edit.text().strip()
+            group_name = self.group_combo.currentText()
+            
             if not name:
                 QMessageBox.warning(self, "错误", "参数名不能为空")
-                return None
+                return None, group_name
 
             param_type = self.type_combo.currentData()
             if not isinstance(param_type, ParameterType):
@@ -230,13 +418,9 @@ class ParameterEditDialog(QDialog):
             # 解析选项
             options = []
             if param_type == ParameterType.SELECT:
-                options_text = self.options_edit.toPlainText().strip()
-                if options_text:
-                    options = [
-                        line.strip()
-                        for line in options_text.split("\\n")
-                        if line.strip()
-                    ]
+                for i in range(self.options_list.count()):
+                    item = self.options_list.item(i)
+                    options.append(item.data(Qt.ItemDataRole.UserRole))
 
             # 创建参数对象
             param = GlobalParameter(
@@ -255,11 +439,75 @@ class ParameterEditDialog(QDialog):
                 options=options,
             )
 
-            return param
+            return param, group_name
 
         except ValueError as e:
             QMessageBox.warning(self, "错误", f"参数值格式错误: {e}")
-            return None
+            return None, ""
+
+
+
+class ParameterGroupEditDialog(QDialog):
+    """参数组编辑对话框"""
+
+    def __init__(
+        self,
+        group: Optional[GlobalParameterGroup] = None,
+        existing_names: List[str] = None,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.group = group
+        self.existing_names = existing_names or []
+        # 如果是编辑模式，允许保留当前名称
+        if self.group and self.group.name in self.existing_names:
+            self.existing_names = [n for n in self.existing_names if n != self.group.name]
+            
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.setWindowTitle("编辑参数组" if self.group else "新建参数组")
+        self.setModal(True)
+        self.resize(300, 200)
+
+        layout = QFormLayout(self)
+
+        # 组名
+        self.name_edit = QLineEdit()
+        if self.group:
+            self.name_edit.setText(self.group.name)
+        layout.addRow("组名:", self.name_edit)
+
+        # 描述
+        self.desc_edit = QTextEdit()
+        self.desc_edit.setMaximumHeight(80)
+        if self.group:
+            self.desc_edit.setText(self.group.description)
+        layout.addRow("描述:", self.desc_edit)
+
+        # 按钮
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(self.validate_and_accept)
+        button_box.rejected.connect(self.reject)
+        layout.addRow(button_box)
+
+    def validate_and_accept(self):
+        name = self.name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "错误", "参数组名不能为空")
+            return
+
+        if name in self.existing_names:
+            QMessageBox.warning(self, "错误", "参数组名已存在")
+            return
+
+        self.accept()
+
+    def get_group_data(self) -> Tuple[str, str]:
+        """获取编辑后的数据"""
+        return self.name_edit.text().strip(), self.desc_edit.toPlainText().strip()
 
 
 class ParameterManagerWindow(QMainWindow):
@@ -534,13 +782,79 @@ class ParameterManagerWindow(QMainWindow):
 
     def add_parameter_group(self):
         """添加参数组"""
-        # TODO: 实现添加参数组对话框
-        QMessageBox.information(self, "提示", "添加参数组功能待实现")
+        dialog = ParameterGroupEditDialog(existing_names=self.manager.get_group_names(), parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            name, desc = dialog.get_group_data()
+            try:
+                new_group = GlobalParameterGroup(name=name, description=desc)
+                self.manager.add_group(new_group)
+                self.load_parameter_groups()
+                
+                # 选中新创建的组
+                items = self.group_list.findItems(name, Qt.MatchFlag.MatchExactly)
+                if items:
+                    self.group_list.setCurrentItem(items[0])
+                    
+                self.status_bar.showMessage(f"已创建参数组: {name}")
+            except ValueError as e:
+                QMessageBox.warning(self, "错误", str(e))
 
     def edit_parameter_group(self):
         """编辑参数组"""
-        # TODO: 实现编辑参数组对话框
-        QMessageBox.information(self, "提示", "编辑参数组功能待实现")
+        current_item = self.group_list.currentItem()
+        if not current_item:
+            return
+
+        group_name = current_item.text()
+        group = self.manager.get_group(group_name)
+        if not group:
+            return
+
+        dialog = ParameterGroupEditDialog(
+            group=group, 
+            existing_names=self.manager.get_group_names(), 
+            parent=self
+        )
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            new_name, new_desc = dialog.get_group_data()
+            
+            # 如果名称改变，需要特殊处理
+            if new_name != group_name:
+                # 1. 移除旧组
+                # 注意：这里有一个潜在问题，如果manager没有重命名方法，我们需要手动处理
+                # remove_group不会返回组对象，所以我们要小心
+                # 更好的方式可能是先添加新组，再移动参数，再删除旧组
+                
+                # 暂时简单的实现：如果改名，视为新组，但保留参数
+                # 然而 parameters 是dict引用，所以可以共享？
+                # GlobalParameterGroup.parameters 是 Dict[str, GlobalParameter]
+                
+                # 创建新组，复制参数
+                new_group = GlobalParameterGroup(
+                    name=new_name, 
+                    description=new_desc, 
+                    parameters=group.parameters # 引用传递，保持参数
+                )
+                
+                try:
+                    self.manager.add_group(new_group)
+                    self.manager.remove_group(group_name)
+                    
+                    self.load_parameter_groups()
+                    # 选中新组
+                    items = self.group_list.findItems(new_name, Qt.MatchFlag.MatchExactly)
+                    if items:
+                        self.group_list.setCurrentItem(items[0])
+                        
+                    self.status_bar.showMessage(f"已重命名参数组: {group_name} -> {new_name}")
+                except ValueError as e:
+                    QMessageBox.warning(self, "错误", f"重命名失败: {e}")
+            else:
+                # 仅更新描述
+                group.description = new_desc
+                self.update_group_display()
+                self.status_bar.showMessage(f"已更新参数组: {group_name}")
 
     def remove_parameter_group(self):
         """删除参数组"""
@@ -572,13 +886,15 @@ class ParameterManagerWindow(QMainWindow):
 
         group_name = current_item.text()
 
-        dialog = ParameterEditDialog(parent=self)
+        dialog = ParameterEditDialog(group_names=self.manager.get_group_names(), current_group=group_name, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            param = dialog.get_parameter()
-            if param and self.manager.add_parameter_to_group(group_name, param):
-                self.load_parameters(group_name)
+            param, target_group = dialog.get_parameter()
+            if param and self.manager.add_parameter_to_group(target_group, param):
+                # If added to a different group than currently viewed, maybe just notify
+                if target_group == group_name:
+                    self.load_parameters(group_name)
                 self.update_group_display()
-                self.status_bar.showMessage(f"已添加参数: {param.name}")
+                self.status_bar.showMessage(f"已添加参数: {param.name} 到组 {target_group}")
 
     def edit_parameter(self):
         """编辑参数"""
@@ -593,17 +909,28 @@ class ParameterManagerWindow(QMainWindow):
         current_item = self.group_list.currentItem()
         group_name = current_item.text()
 
-        dialog = ParameterEditDialog(old_param, parent=self)
+        dialog = ParameterEditDialog(old_param, group_names=self.manager.get_group_names(), current_group=group_name, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            new_param = dialog.get_parameter()
+            new_param, new_group_name = dialog.get_parameter()
             if new_param:
-                if self.manager.update_parameter_in_group(
-                    group_name, old_name, new_param
-                ):
-                    self.load_parameters(group_name)
-                    self.status_bar.showMessage(f"已更新参数: {new_param.name}")
+                if new_group_name == group_name:
+                    # Same group, just update
+                    if self.manager.update_parameter_in_group(
+                        group_name, old_name, new_param
+                    ):
+                        self.load_parameters(group_name)
+                        self.status_bar.showMessage(f"已更新参数: {new_param.name}")
+                    else:
+                        QMessageBox.warning(self, "错误", "更新参数失败")
                 else:
-                    QMessageBox.warning(self, "错误", "更新参数失败")
+                    # Group changed, move parameter
+                    if self.manager.move_parameter(group_name, new_group_name, old_name, new_param):
+                             # Move success
+                             self.load_parameter_groups() # Group counts changed maybe
+                             self.load_parameters(group_name) # Refresh current view (param should disappear)
+                             self.status_bar.showMessage(f"已移动参数 {new_param.name} 到组 {new_group_name}")
+                    else:
+                         QMessageBox.warning(self, "错误", f"移动参数失败: 未能移动到新组 '{new_group_name}'")
 
     def remove_parameter(self):
         """删除参数"""

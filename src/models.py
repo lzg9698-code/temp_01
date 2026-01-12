@@ -1,9 +1,9 @@
 """数据模型 - 极简设计"""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 class ParameterType(Enum):
@@ -55,10 +55,18 @@ class GlobalParameter:
                 if self.max_value is not None and int_value > self.max_value:
                     return False, f"{self.name} 不能大于 {self.max_value}"
             elif self.type == ParameterType.SELECT:
-                if value not in self.options:
+                # Handle both simple list and structured options
+                valid_values = []
+                for opt in self.options:
+                    if isinstance(opt, dict) and "value" in opt:
+                        valid_values.append(str(opt["value"]))
+                    else:
+                        valid_values.append(str(opt))
+                        
+                if str(value) not in valid_values:
                     return (
                         False,
-                        f"{self.name} 必须是以下选项之一: {', '.join(self.options)}",
+                        f"{self.name} 必须是以下选项之一: {', '.join(valid_values)}",
                     )
         except (ValueError, TypeError) as e:
             return False, f"{self.name} 类型错误: {e}"

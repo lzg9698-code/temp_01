@@ -4,7 +4,8 @@
 """
 
 import os
-from typing import Optional, Dict, Any
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -31,19 +32,15 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QDialogButtonBox,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from PyQt6.QtGui import QFont
+from typing import Optional, Dict, Any
 
+from parameter_manager import get_parameter_manager
 from .models import (
     EditableScheme,
     TemplateDef,
-    ParameterDef,
-    ParameterGroup,
-    ParameterType,
 )
 from .serializers import SchemeSerializer
 from .utils import TemplateUtils
-from parameter_manager import get_parameter_manager
 
 
 class BasicInfoWidget(QWidget):
@@ -629,31 +626,33 @@ class ParameterScanWidget(QWidget):
             required=False,  # 默认设为非必填，避免保存时因缺少默认值失败
         )
 
-        dialog = ParameterEditDialog(new_param, self)
+        # 获取当前参数组列表
+        # get_parameter_manager is already imported and used to initialize self.param_manager
+        manager = self.param_manager
+        group_names = manager.get_group_names()
+
+        dialog = ParameterEditDialog(new_param, group_names=group_names, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            # 保存到库
-            try:
-                success = self.param_manager.add_parameter_to_group(group_name, new_param)
-                
-                if success:
+            param, target_group = dialog.get_parameter()
+            if param:
+                # Add to manager
+                if manager.add_parameter_to_group(target_group, param):
                     # 更新方案的引用组
-                    if group_name not in self.scheme.referenced_groups:
-                        self.scheme.referenced_groups.append(group_name)
+                    if target_group not in self.scheme.referenced_groups:
+                        self.scheme.referenced_groups.append(target_group)
 
                     # 从表格中移除已添加的行
                     for r in range(self.result_table.rowCount()):
                         item = self.result_table.item(r, 0)
-                        if item and item.text() == var_name:
+                        if item and item.text() == var_name: # Use original var_name for removal
                             self.result_table.removeRow(r)
                             break
 
                     QMessageBox.information(
-                        self, "成功", f"参数 '{var_name}' 已添加到组 '{group_name}'"
+                        self, "成功", f"参数 '{var_name}' 已添加到组 '{target_group}'"
                     )
                 else:
                     QMessageBox.critical(self, "错误", f"添加参数失败，请检查参数定义是否完整（如必填项是否有默认值）")
-            except Exception as e:
-                QMessageBox.critical(self, "错误", f"添加参数失败: {e}")
 
 
 class SchemeEditorDialog(QDialog):
