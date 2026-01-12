@@ -644,10 +644,6 @@ class ParameterManagerWindow(QMainWindow):
         # 文件菜单
         file_menu = menubar.addMenu("文件")
 
-        import_action = QAction("导入方案参数", self)
-        import_action.triggered.connect(self.import_from_scheme)
-        file_menu.addAction(import_action)
-
         file_menu.addSeparator()
 
         save_action = QAction("保存", self)
@@ -659,6 +655,16 @@ class ParameterManagerWindow(QMainWindow):
         reload_action.setShortcut("F5")
         reload_action.triggered.connect(self.reload_library)
         file_menu.addAction(reload_action)
+
+        file_menu.addSeparator()
+
+        export_action = QAction("导出备份 (Export)...", self)
+        export_action.triggered.connect(self.export_library)
+        file_menu.addAction(export_action)
+
+        import_action = QAction("从备份导入 (Import)...", self)
+        import_action.triggered.connect(self.import_library)
+        file_menu.addAction(import_action)
 
         file_menu.addSeparator()
 
@@ -956,11 +962,6 @@ class ParameterManagerWindow(QMainWindow):
                 self.update_group_display()
                 self.status_bar.showMessage(f"已删除参数: {param_name}")
 
-    def import_from_scheme(self):
-        """从方案导入参数"""
-        # TODO: 实现从方案导入参数
-        QMessageBox.information(self, "提示", "导入方案参数功能待实现")
-
     def save_library(self):
         """保存参数库"""
         if self.manager.save_library():
@@ -985,6 +986,59 @@ class ParameterManagerWindow(QMainWindow):
         else:
             error_text = "\\n".join(f"- {error}" for error in errors)
             QMessageBox.warning(self, "验证结果", f"参数库验证失败:\\n{error_text}")
+
+    def export_library(self):
+        """导出参数库"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "导出参数库备份", "", "YAML Files (*.yaml);;All Files (*)"
+        )
+        if file_path:
+            if self.manager.export_library(Path(file_path)):
+                QMessageBox.information(self, "成功", f"参数库已导出至:\n{file_path}")
+            else:
+                QMessageBox.warning(self, "错误", "导出参数库失败")
+
+    def import_library(self):
+        """从文件导入参数库"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "导入参数库备份", "", "YAML Files (*.yaml);;All Files (*)"
+        )
+        if not file_path:
+            return
+
+        # 询问导入模式
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("导入模式")
+        msg_box.setText("请选择导入模式：")
+        msg_box.setInformativeText(
+            "合并：保留现有参数，仅添加或覆盖相同名称的参数。\n"
+            "覆盖：删除当前所有参数，完全替换为导入的文件。"
+        )
+        merge_btn = msg_box.addButton("合并", QMessageBox.ButtonRole.AcceptRole)
+        overwrite_btn = msg_box.addButton("覆盖", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_btn = msg_box.addButton("取消", QMessageBox.ButtonRole.RejectRole)
+        
+        msg_box.exec()
+        
+        if msg_box.clickedButton() == cancel_btn:
+            return
+            
+        merge = msg_box.clickedButton() == merge_btn
+        
+        if not merge:
+            reply = QMessageBox.question(
+                self, "确认覆盖", "覆盖操作将删除当前所有参数且不可撤销，是否继续？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
+
+        if self.manager.import_library(Path(file_path), merge=merge):
+            self.load_parameter_groups()
+            self.status_bar.showMessage("参数库导入成功")
+            QMessageBox.information(self, "成功", "参数库导入成功")
+        else:
+            QMessageBox.warning(self, "错误", "导入参数库失败，请检查文件格式。")
 
     def show_library_info(self):
         """显示库信息"""

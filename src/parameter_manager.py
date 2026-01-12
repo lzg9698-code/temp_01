@@ -300,6 +300,47 @@ class ParameterManager:
             print(f"删除参数组失败: {e}")
             return False
 
+    def export_library(self, file_path: Path) -> bool:
+        """导出参数库到文件"""
+        if not self._library:
+            return False
+        try:
+            data = self._library.get_dict()
+            with open(file_path, "w", encoding="utf-8") as f:
+                yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+            return True
+        except Exception as e:
+            print(f"导出参数库失败: {e}")
+            return False
+
+    def import_library(self, file_path: Path, merge: bool = True) -> bool:
+        """从文件导入参数库"""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            
+            if not data or "groups" not in data:
+                return False
+            
+            new_library = self._library_from_dict(data)
+            
+            if not merge:
+                self._library = new_library
+            else:
+                # 合并
+                for g_name, new_group in new_library.groups.items():
+                    if g_name in self._library.groups:
+                        group = self._library.groups[g_name]
+                        for p_name, p_data in new_group.parameters.items():
+                            group.parameters[p_name] = p_data
+                    else:
+                        self._library.add_group(new_group)
+            
+            return self.save_library()
+        except Exception as e:
+            print(f"导入参数库失败: {e}")
+            return False
+
     def add_parameter_to_group(self, group_name: str, param: GlobalParameter) -> bool:
         """向参数组添加参数
 

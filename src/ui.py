@@ -1,6 +1,17 @@
 import sys
-import typing
 from pathlib import Path
+from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
+from PyQt6.QtGui import (
+    QSyntaxHighlighter,
+    QTextCharFormat,
+    QColor,
+    QFont,
+    QFontDatabase,
+    QIcon,
+    QPixmap,
+    QPainter,
+    QPen,
+)
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -25,56 +36,47 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QGridLayout,
     QTabBar,
-)
-from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
-from PyQt6.QtGui import (
-    QSyntaxHighlighter,
-    QTextCharFormat,
-    QColor,
-    QFont,
-    QFontDatabase,
-    QIcon,
-    QPixmap,
-    QPainter,
-    QPen,
+    QMenu,
 )
 
 from core import SimpleEngine
 from models import Solution, Template, RenderResult
 
+
 # =============================================================================
 # 0. AppResources - 应用资源 (图标等)
 # =============================================================================
+
 
 def get_app_icon() -> QIcon:
     """生成一个简易的 NC 生成器矢量图标"""
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.GlobalColor.transparent)
-    
+
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    
+
     # 绘制背景 (圆角矩形，深灰色)
     painter.setBrush(QColor("#2c3e50"))
     painter.setPen(Qt.PenStyle.NoPen)
     painter.drawRoundedRect(4, 4, 56, 56, 12, 12)
-    
+
     # 绘制 "NC" 字样
     font = QFont("Arial", 24, QFont.Weight.Bold)
     painter.setFont(font)
-    
+
     # 绘制 N (橙色)
     painter.setPen(QColor("#e67e22"))
     painter.drawText(10, 42, "N")
-    
+
     # 绘制 C (蓝色)
     painter.setPen(QColor("#3498db"))
     painter.drawText(34, 42, "C")
-    
+
     # 绘制底部线条
     painter.setPen(QPen(QColor("#ecf0f1"), 2))
     painter.drawLine(12, 48, 52, 48)
-    
+
     painter.end()
     return QIcon(pixmap)
 
@@ -158,7 +160,7 @@ class NCHighlighter(QSyntaxHighlighter):
     def highlightBlock(self, text: str | None):
         if not text:
             return
-        
+
         # 为了处理优先级，我们按顺序应用规则
         # 注意：QSyntaxHighlighter 的 setFormat 会覆盖之前的格式，
         # 所以低优先级的应该先应用，高优先级的后应用。
@@ -169,7 +171,6 @@ class NCHighlighter(QSyntaxHighlighter):
             while iterator.hasNext():
                 match = iterator.next()
                 self.setFormat(match.capturedStart(), match.capturedLength(), fmt)
-
 
 
 # =============================================================================
@@ -183,15 +184,15 @@ class SolutionWidget(QWidget):
     """
 
     solution_selected = pyqtSignal(Solution)  # Emits the full Solution object
-    open_param_manager = pyqtSignal()     # Emits when parameter manager button is clicked
-    scheme_edited = pyqtSignal()          # 方案编辑完成信号
+    open_param_manager = pyqtSignal()  # Emits when parameter manager button is clicked
+    scheme_edited = pyqtSignal()  # 方案编辑完成信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._solutions: list[Solution] = []
         self._current_solution: Solution | None = None  # 当前选择的方案
-        self._item_widgets: dict[str, QWidget] = {} # sol_id -> widget
-        self._info_widgets: dict[str, QWidget] = {} # sol_id -> info_widget
+        self._item_widgets: dict[str, QWidget] = {}  # sol_id -> widget
+        self._info_widgets: dict[str, QWidget] = {}  # sol_id -> info_widget
         self._setup_ui()
 
     def _setup_ui(self):
@@ -208,12 +209,12 @@ class SolutionWidget(QWidget):
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
+
         self.list_container = QWidget()
         self.list_layout = QVBoxLayout(self.list_container)
         self.list_layout.setContentsMargins(0, 0, 0, 0)
         self.list_layout.setSpacing(2)
-        
+
         self.scroll.setWidget(self.list_container)
         layout.addWidget(self.scroll)
 
@@ -226,7 +227,7 @@ class SolutionWidget(QWidget):
             item = self.list_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        
+
         self._solutions = solutions
         self._item_widgets.clear()
         self._info_widgets.clear()
@@ -260,19 +261,21 @@ class SolutionWidget(QWidget):
                     font-weight: bold;
                 }
             """)
-            
+
             # Info Area (Hidden by default)
             info_widget = QWidget()
             info_widget.setVisible(False)
-            info_widget.setStyleSheet("background-color: #fafafa; border-bottom: 1px solid #eee;")
+            info_widget.setStyleSheet(
+                "background-color: #fafafa; border-bottom: 1px solid #eee;"
+            )
             info_layout = QFormLayout(info_widget)
             info_layout.setContentsMargins(25, 10, 10, 10)
             info_layout.setSpacing(5)
-            
+
             v_label = QLabel(sol.version or "1.0.0")
             v_label.setStyleSheet("color: #0078D7; font-weight: bold;")
             info_layout.addRow("版本:", v_label)
-            
+
             d_label = QLabel(sol.description or "无描述")
             d_label.setWordWrap(True)
             d_label.setStyleSheet("color: #666; font-style: italic;")
@@ -280,13 +283,19 @@ class SolutionWidget(QWidget):
 
             item_layout.addWidget(btn)
             item_layout.addWidget(info_widget)
-            
+
             self.list_layout.addWidget(item_container)
             self._item_widgets[sol.id] = btn
             self._info_widgets[sol.id] = info_widget
 
             # Connect click
             btn.clicked.connect(lambda checked, s=sol: self._on_solution_clicked(s))
+
+            # Enable and connect context menu
+            btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            btn.customContextMenuRequested.connect(
+                lambda pos, s=sol: self._on_context_menu_requested(pos, s)
+            )
 
         self.list_layout.addStretch()
 
@@ -308,28 +317,40 @@ class SolutionWidget(QWidget):
     def _on_solution_clicked(self, solution: Solution):
         """Handle solution selection."""
         self._current_solution = solution
-        
+
         # Update UI states
         for sol_id, btn in self._item_widgets.items():
-            is_selected = (sol_id == solution.id)
+            is_selected = sol_id == solution.id
             btn.blockSignals(True)
             btn.setChecked(is_selected)
             btn.blockSignals(False)
-            
+
             # Toggle info visibility
             info = self._info_widgets[sol_id]
             info.setVisible(is_selected)
 
         self.solution_selected.emit(solution)
 
-    def on_edit_solution(self):
-        """编辑当前方案"""
-        if self._current_solution:
+    def _on_context_menu_requested(self, pos, solution: Solution):
+        """Handle right-click on solution button."""
+        menu = QMenu(self)
+        edit_action = menu.addAction("编辑方案")
+        
+        # Map local position to global for showing the menu
+        global_pos = self._item_widgets[solution.id].mapToGlobal(pos)
+        action = menu.exec(global_pos)
+        
+        if action == edit_action:
+            self.on_edit_solution(solution)
+
+    def on_edit_solution(self, solution: Solution | None = None):
+        """编辑方案"""
+        target_solution = solution or self._current_solution
+        if target_solution:
             try:
                 from scheme_editor import SchemeEditorDialog
 
-                # TODO: Update SchemeEditorDialog to handle Solution
-                editor = SchemeEditorDialog(self._current_solution, self)
+                editor = SchemeEditorDialog(target_solution, self)
 
                 # 设置与主窗口相同的位置和大小
                 main_window = self.parent()
@@ -354,6 +375,7 @@ class SolutionWidget(QWidget):
 
 class NoScrollSpinBox(QSpinBox):
     """禁用滚轮和上下箭头的 SpinBox，并支持回车信号"""
+
     returnPressed = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -372,6 +394,7 @@ class NoScrollSpinBox(QSpinBox):
 
 class NoScrollDoubleSpinBox(QDoubleSpinBox):
     """禁用滚轮和上下箭头的 DoubleSpinBox，并支持回车信号"""
+
     returnPressed = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -399,7 +422,7 @@ class ParamWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.input_widgets = {}  # Map param_key -> widget
-        self.ordered_widgets = [] # List of widgets in display order
+        self.ordered_widgets = []  # List of widgets in display order
         self.param_defs = {}
         self._is_valid = True
         self._setup_ui()
@@ -420,7 +443,9 @@ class ParamWidget(QWidget):
 
         self.form_container = QWidget()
         self.form_layout = QVBoxLayout(self.form_container)
-        self.form_layout.setContentsMargins(0, 0, 15, 0) # 增加右侧边距，避免被滚动条遮挡
+        self.form_layout.setContentsMargins(
+            0, 0, 15, 0
+        )  # 增加右侧边距，避免被滚动条遮挡
         self.form_layout.setSpacing(10)
 
         scroll.setWidget(self.form_container)
@@ -438,7 +463,7 @@ class ParamWidget(QWidget):
             item = self.form_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        
+
         self.input_widgets.clear()
         self.ordered_widgets.clear()
         self.param_defs.clear()
@@ -462,7 +487,9 @@ class ParamWidget(QWidget):
                 display_name = p_def.get("description") or p_key
                 label = QLabel(display_name)
                 label.setToolTip(f"变量名: {p_key}")
-                label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                label.setAlignment(
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                )
                 group_layout.addWidget(label, row, 0)
 
                 # 2. Input Widget
@@ -471,9 +498,16 @@ class ParamWidget(QWidget):
                     widget = NoScrollSpinBox()
                     widget.setFixedWidth(80)
                     widget.setAlignment(Qt.AlignmentFlag.AlignRight)
-                    widget.setRange(int(p_def.get("min", -99999)), int(p_def.get("max", 99999)))
+                    widget.setRange(
+                        int(p_def.get("min", -99999)), int(p_def.get("max", 99999))
+                    )
                     try:
-                        val = int(default_val) if default_val is not None and str(default_val).strip() != "" else 0
+                        val = (
+                            int(default_val)
+                            if default_val is not None
+                            and str(default_val).strip() != ""
+                            else 0
+                        )
                     except (ValueError, TypeError):
                         val = 0
                     widget.setValue(val)
@@ -484,10 +518,18 @@ class ParamWidget(QWidget):
                     widget = NoScrollDoubleSpinBox()
                     widget.setFixedWidth(80)
                     widget.setAlignment(Qt.AlignmentFlag.AlignRight)
-                    widget.setRange(float(p_def.get("min", -99999.0)), float(p_def.get("max", 99999.0)))
+                    widget.setRange(
+                        float(p_def.get("min", -99999.0)),
+                        float(p_def.get("max", 99999.0)),
+                    )
                     widget.setDecimals(3)
                     try:
-                        val = float(default_val) if default_val is not None and str(default_val).strip() != "" else 0.0
+                        val = (
+                            float(default_val)
+                            if default_val is not None
+                            and str(default_val).strip() != ""
+                            else 0.0
+                        )
                     except (ValueError, TypeError):
                         val = 0.0
                     widget.setValue(val)
@@ -496,23 +538,54 @@ class ParamWidget(QWidget):
 
                 elif p_type in ["bool", "boolean"]:
                     widget = QCheckBox()
-                    widget.setChecked(bool(default_val) if default_val is not None and str(default_val).strip() != "" else False)
+                    widget.setChecked(
+                        bool(default_val)
+                        if default_val is not None and str(default_val).strip() != ""
+                        else False
+                    )
                     widget.stateChanged.connect(self._on_value_changed)
 
                 elif p_type in ["select", "choice"]:
                     widget = QComboBox()
-                    widget.setFixedWidth(80)
+                    # Remove fixed width to allow content adaptation
+                    widget.setMinimumWidth(80)
+                    widget.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+                    
                     options = p_def.get("options", [])
-                    widget.addItems([str(opt) for opt in options])
-                    if str(default_val) in [str(opt) for opt in options]:
-                        widget.setCurrentText(str(default_val))
-                    widget.currentTextChanged.connect(self._on_value_changed)
+                    # Support both list of strings and list of dictionaries (label/value)
+                    for opt in options:
+                        if isinstance(opt, dict) and "label" in opt and "value" in opt:
+                            widget.addItem(str(opt["label"]), opt["value"])
+                        else:
+                            widget.addItem(str(opt), str(opt))
+                            
+                    # Set initial value
+                    if default_val is not None:
+                        idx = -1
+                        search_val = str(default_val)
+                        # Check against item data (value) first
+                        for i in range(widget.count()):
+                            if str(widget.itemData(i)) == search_val:
+                                idx = i
+                                break
+                        # Fallback to checking item text
+                        if idx == -1:
+                            idx = widget.findText(search_val)
+                            
+                        if idx != -1:
+                            widget.setCurrentIndex(idx)
+                            
+                    widget.currentIndexChanged.connect(self._on_value_changed)
 
                 else:
                     widget = QLineEdit()
                     widget.setFixedWidth(80)
                     widget.setAlignment(Qt.AlignmentFlag.AlignRight)
-                    widget.setText(str(default_val) if default_val is not None and str(default_val).strip() != "" else "")
+                    widget.setText(
+                        str(default_val)
+                        if default_val is not None and str(default_val).strip() != ""
+                        else ""
+                    )
                     widget.textChanged.connect(self._on_value_changed)
                     widget.returnPressed.connect(self._focus_next_widget)
 
@@ -525,7 +598,7 @@ class ParamWidget(QWidget):
                 unit = p_def.get("unit", "")
                 unit_label = QLabel(unit)
                 unit_label.setStyleSheet("color: #888; font-size: 10px;")
-                unit_label.setFixedWidth(50) # 增加宽度以完整显示 mm/min 等单位
+                unit_label.setFixedWidth(50)  # 增加宽度以完整显示 mm/min 等单位
                 group_layout.addWidget(unit_label, row, 2)
 
                 row += 1
@@ -555,7 +628,7 @@ class ParamWidget(QWidget):
         for p_key, widget in self.input_widgets.items():
             p_def = self.param_defs.get(p_key, {})
             val = current_values.get(p_key)
-            
+
             # Validation logic
             is_valid = True
             p_type = p_def.get("type", "string").lower()
@@ -571,10 +644,12 @@ class ParamWidget(QWidget):
                         is_valid = False
                 except:
                     is_valid = False
-            
+
             # UI Feedback
             if not is_valid:
-                widget.setStyleSheet("background-color: #FFCCCC; border: 1px solid red;")
+                widget.setStyleSheet(
+                    "background-color: #FFCCCC; border: 1px solid red;"
+                )
                 is_all_valid = False
             else:
                 widget.setStyleSheet("")
@@ -594,7 +669,12 @@ class ParamWidget(QWidget):
             elif isinstance(widget, QCheckBox):
                 values[p_key] = widget.isChecked()
             elif isinstance(widget, QComboBox):
-                values[p_key] = widget.currentText()
+                # Return the underlying value (data) if available, otherwise text
+                data = widget.currentData()
+                if data is not None:
+                    values[p_key] = data
+                else:
+                    values[p_key] = widget.currentText()
             elif isinstance(widget, QLineEdit):
                 values[p_key] = widget.text()
         return values
@@ -611,6 +691,7 @@ class PreviewWidget(QWidget):
     """
 
     template_changed = pyqtSignal(int)  # Emits the selected template index
+    export_all_requested = pyqtSignal()  # Emits when export all button is clicked
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -635,7 +716,7 @@ class PreviewWidget(QWidget):
         self.tabs = QTabBar()
         self.tabs.setDocumentMode(True)
         self.tabs.setExpanding(False)
-        self.tabs.setDrawBase(False) # 移除底部的线条
+        self.tabs.setDrawBase(False)  # 移除底部的线条
         self.tabs.setStyleSheet("""
             QTabBar::tab {
                 background-color: #f5f5f5;
@@ -676,22 +757,33 @@ class PreviewWidget(QWidget):
 
         layout.addWidget(self.editor)
 
-        # Export Button
-        self.export_btn = QPushButton("导出 NC 代码")
-        self.export_btn.setFixedHeight(40)
-        self.export_btn.setFont(QFont("Arial", 10, QFont.Weight.Bold))
-        self.export_btn.clicked.connect(self.export_file)
-        layout.addWidget(self.export_btn)
+        # Export Buttons
+        export_layout = QHBoxLayout()
+        export_layout.setSpacing(10)
+
+        self.export_current_btn = QPushButton("导出当前")
+        self.export_current_btn.setFixedHeight(40)
+        self.export_current_btn.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        self.export_current_btn.clicked.connect(self.export_file)
+        export_layout.addWidget(self.export_current_btn)
+
+        self.export_all_btn = QPushButton("导出方案(文件夹)")
+        self.export_all_btn.setFixedHeight(40)
+        self.export_all_btn.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        self.export_all_btn.clicked.connect(self.export_all_requested.emit)
+        export_layout.addWidget(self.export_all_btn)
+
+        layout.addLayout(export_layout)
 
     def set_templates(self, templates: list[Template]):
         """Populate the tabs with available templates."""
         self._templates = templates
         self.tabs.blockSignals(True)
-        
+
         # Clear existing tabs
         while self.tabs.count() > 0:
             self.tabs.removeTab(0)
-            
+
         for template in templates:
             self.tabs.addTab(template.name)
         self.tabs.blockSignals(False)
@@ -726,7 +818,7 @@ class PreviewWidget(QWidget):
             if ext and not ext.startswith("."):
                 ext = f".{ext}"
             default_name = f"{name}{ext}"
-        
+
         # 使用 QFileDialog 并强制使用内置样式以支持定位
         dialog = QFileDialog(self.window())
         dialog.setOption(QFileDialog.Option.DontUseNativeDialog)
@@ -735,13 +827,13 @@ class PreviewWidget(QWidget):
         dialog.selectFile(default_name)
         dialog.setNameFilter("NC Files (*.nc);;All Files (*)")
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
-        
+
         # 居中逻辑
         main_win = self.window()
         if main_win:
             dialog.setWindowModality(Qt.WindowModality.WindowModal)
             dialog.resize(800, 600)
-            
+
             # 计算中心位置
             win_geo = main_win.geometry()
             size = dialog.size()
@@ -756,10 +848,11 @@ class PreviewWidget(QWidget):
                 try:
                     with open(file_path, "w", encoding="utf-8") as f:
                         f.write(self._last_result.content)
-                    QMessageBox.information(self.window(), "成功", f"文件已保存至:\n{file_path}")
+                    QMessageBox.information(
+                        self.window(), "成功", f"文件已保存至:\n{file_path}"
+                    )
                 except Exception as e:
                     QMessageBox.critical(self.window(), "错误", f"保存文件失败:\n{e}")
-
 
 
 # =============================================================================
@@ -777,7 +870,20 @@ class MainWindow(QMainWindow):
         self.engine = engine  # Store the engine instance
         self.setWindowTitle("NC Code Generator (Simple UI)")
         self.setWindowIcon(get_app_icon())
-        self.resize(1000, 600)
+
+        # 获取屏幕尺寸并设置窗口为屏幕的 80%
+        screen = self.screen()
+        if screen:
+            screen_geometry = screen.availableGeometry()
+            width = int(screen_geometry.width() * 0.8)
+            height = int(screen_geometry.height() * 0.8)
+            self.resize(width, height)
+            # 居中窗口
+            x = (screen_geometry.width() - width) // 2 + screen_geometry.x()
+            y = (screen_geometry.height() - height) // 2 + screen_geometry.y()
+            self.move(x, y)
+        else:
+            self.resize(1000, 600)
 
         self.current_solution: Solution | None = None
         self.current_template: Template | None = None
@@ -791,50 +897,116 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QHBoxLayout(self.central_widget)
-        
+
         # Left: Solution Selection (Navigator)
         self.solution_widget = SolutionWidget()
         self.solution_widget.solution_selected.connect(self._on_solution_selected)
         self.solution_widget.scheme_edited.connect(self.reload_schemes)
-        
+
         # Middle: Parameter Input (Inspector)
         self.param_widget = ParamWidget()
         self.param_widget.params_changed.connect(self._on_params_changed)
         self.param_widget.validation_changed.connect(self._on_validation_changed)
-        
+
         # Right: Preview and Export (Preview)
         self.preview_widget = PreviewWidget()
         self.preview_widget.template_changed.connect(self._on_template_selected)
+        self.preview_widget.export_all_requested.connect(self._on_export_all_requested)
 
         # Splitter for flexible layout
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.addWidget(self.solution_widget)
         self.splitter.addWidget(self.param_widget)
         self.splitter.addWidget(self.preview_widget)
-        
+
         # Set initial sizes for three columns
         self.splitter.setSizes([200, 350, 450])
-        
+
         self.main_layout.addWidget(self.splitter)
 
     def _setup_menu(self):
         """Create the tools menu."""
         menubar = self.menuBar()
         tools_menu = menubar.addMenu("工具")
-        
-        edit_action = tools_menu.addAction("编辑当前方案")
-        edit_action.triggered.connect(self.solution_widget.on_edit_solution)
-        
+
         param_lib_action = tools_menu.addAction("全局参数库")
         param_lib_action.triggered.connect(self._open_parameter_manager)
 
     def _on_validation_changed(self, is_valid: bool):
-        """Enable or disable export button based on validation."""
-        self.preview_widget.export_btn.setEnabled(is_valid)
+        """Enable or disable export buttons based on validation."""
+        self.preview_widget.export_current_btn.setEnabled(is_valid)
+        self.preview_widget.export_all_btn.setEnabled(is_valid)
         if not is_valid:
-            self.preview_widget.export_btn.setToolTip("参数输入有误，请检查标红项")
+            msg = "参数输入有误，请检查标红项"
+            self.preview_widget.export_current_btn.setToolTip(msg)
+            self.preview_widget.export_all_btn.setToolTip(msg)
         else:
-            self.preview_widget.export_btn.setToolTip("")
+            self.preview_widget.export_current_btn.setToolTip("")
+            self.preview_widget.export_all_btn.setToolTip("")
+
+    def _on_export_all_requested(self):
+        """导出当前方案的所有模板代码"""
+        if not self.current_solution:
+            return
+
+        # 使用 QFileDialog 并强制使用内置样式以支持定位
+        dialog = QFileDialog(self)
+        dialog.setOption(QFileDialog.Option.DontUseNativeDialog)
+        dialog.setWindowTitle("选择导出目录")
+        dialog.setDirectory(".")
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
+        dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)
+
+        # 居中逻辑
+        dialog.resize(800, 600)
+        win_geo = self.geometry()
+        size = dialog.size()
+        x = win_geo.center().x() - size.width() // 2
+        y = win_geo.center().y() - size.height() // 2
+        dialog.move(x, y)
+
+        if not dialog.exec():
+            return
+
+        selected_dirs = dialog.selectedFiles()
+        if not selected_dirs:
+            return
+
+        dir_path = Path(selected_dirs[0])
+
+        # 渲染所有模板并保存
+        success_count = 0
+        errors = []
+
+        for template in self.current_solution.templates:
+            result = self.engine.render(template, self.current_params)
+            if result.success:
+                # 确定文件名
+                name = template.output_name or template.name
+                ext = template.output_ext or "nc"
+                if ext and not ext.startswith("."):
+                    ext = f".{ext}"
+                file_path = dir_path / f"{name}{ext}"
+
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        f.write(result.content)
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"保存 {template.name} 失败: {e}")
+            else:
+                errors.append(f"渲染 {template.name} 失败: {result.error}")
+
+        if errors:
+            QMessageBox.warning(
+                self,
+                "导出完成",
+                f"成功导出 {success_count} 个文件。\n\n错误信息:\n" + "\n".join(errors),
+            )
+        else:
+            QMessageBox.information(
+                self, "成功", f"方案中所有 {success_count} 个模板已成功导出至:\n{dir_path}"
+            )
 
     def _open_parameter_manager(self):
         """打开参数管理器"""
@@ -847,10 +1019,14 @@ class MainWindow(QMainWindow):
 
             manager = get_parameter_manager()
             from config import config
+
             manager.initialize(config.CONFIG_DIR)
 
             # 显示参数管理器窗口，保存引用防止被垃圾回收
-            if not hasattr(self, "_param_manager_window") or self._param_manager_window is None:
+            if (
+                not hasattr(self, "_param_manager_window")
+                or self._param_manager_window is None
+            ):
                 self._param_manager_window = show_parameter_manager(self)
             else:
                 self._param_manager_window.show()
@@ -883,20 +1059,19 @@ class MainWindow(QMainWindow):
     def _on_solution_selected(self, solution: Solution):
         """Handle solution selection: load params and reset preview."""
         self.current_solution = solution
-        
+
         # 激活方案（初始化渲染引擎和加载配置）
         self.engine.activate_solution(solution.id)
 
         # Build form based on solution parameters
         # engine.get_all_scheme_parameters returns a dictionary grouped by referenced_groups
         params_def = self.engine.get_all_scheme_parameters(solution)
-        
+
         # Pass parameters directly (already grouped)
         self.param_widget.build_form(params_def, solution.defaults)
 
         # Update template list in preview widget
         self.preview_widget.set_templates(solution.templates)
-
 
     def _on_params_changed(self, values: dict):
         """Handle parameter changes."""
@@ -913,16 +1088,14 @@ class MainWindow(QMainWindow):
         """Render the current template with current parameters."""
         if not self.current_solution or not self.current_template:
             return
-            
+
         try:
-            result = self.engine.render(
-                self.current_template,
-                self.current_params
-            )
+            result = self.engine.render(self.current_template, self.current_params)
             self.preview_widget.update_preview(result)
         except Exception as e:
             # Don't show dialog for render errors to avoid UI spam, just show in preview
             from models import RenderResult
+
             self.preview_widget.update_preview(RenderResult(content=f"渲染错误:\n{e}"))
 
 

@@ -445,19 +445,29 @@ class ParameterScanWidget(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout(self)
 
+        # 此处改为使用 TabWidget
+        self.tab_widget = QTabWidget()
+        layout.addWidget(self.tab_widget)
+
+        # ---------------------------------------------------------
+        # Tab 1: 扫描缺失变量 (原功能)
+        # ---------------------------------------------------------
+        scan_tab = QWidget()
+        scan_layout = QVBoxLayout(scan_tab)
+
         # 说明文字
         info_label = QLabel(
             "扫描当前方案所有模板中使用的变量，并识别缺失的参数定义。\n"
             "您可以将缺失的变量快速添加到全局参数库中。"
         )
         info_label.setStyleSheet("color: #666; margin-bottom: 10px;")
-        layout.addWidget(info_label)
+        scan_layout.addWidget(info_label)
 
         # 扫描按钮
         self.scan_btn = QPushButton("开始扫描模板变量")
         self.scan_btn.setMinimumHeight(40)
         self.scan_btn.clicked.connect(self.scan_variables)
-        layout.addWidget(self.scan_btn)
+        scan_layout.addWidget(self.scan_btn)
 
         # 结果列表
         self.result_table = QTableWidget()
@@ -466,15 +476,87 @@ class ParameterScanWidget(QWidget):
         self.result_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-        layout.addWidget(self.result_table)
+        scan_layout.addWidget(self.result_table)
 
-        # 底部操作
-        self.status_label = QLabel("就绪")
-        layout.addWidget(self.status_label)
+        self.scan_status_label = QLabel("就绪")
+        scan_layout.addWidget(self.scan_status_label)
+
+        self.tab_widget.addTab(scan_tab, "缺失变量扫描")
+
+        # ---------------------------------------------------------
+        # Tab 2: 已引用参数详情 (新功能)
+        # ---------------------------------------------------------
+        ref_tab = QWidget()
+        ref_layout = QVBoxLayout(ref_tab)
+        
+        ref_info_label = QLabel("当前方案已引用的所有参数详情。")
+        ref_info_label.setStyleSheet("color: #666; margin-bottom: 5px;")
+        ref_layout.addWidget(ref_info_label)
+
+        self.ref_refresh_btn = QPushButton("刷新引用列表")
+        self.ref_refresh_btn.clicked.connect(self.load_referenced_variables)
+        ref_layout.addWidget(self.ref_refresh_btn)
+
+        self.ref_table = QTableWidget()
+        self.ref_table.setColumnCount(5)
+        self.ref_table.setHorizontalHeaderLabels(["变量名", "所属组", "类型", "默认值", "描述"])
+        self.ref_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Allows copying content from cells
+        self.ref_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        ref_layout.addWidget(self.ref_table)
+        
+        self.ref_status_label = QLabel("就绪")
+        ref_layout.addWidget(self.ref_status_label)
+
+        self.tab_widget.addTab(ref_tab, "已引用参数详情")
+        
+        # Connect tab change to refresh
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+
+    def on_tab_changed(self, index):
+        if index == 1: # Referenced tab
+             self.load_referenced_variables()
+
+    def load_referenced_variables(self):
+        """加载已引用的参数"""
+        self.ref_status_label.setText("正在加载...")
+        self.ref_table.setRowCount(0)
+        
+        library = self.param_manager.library
+        if not library:
+             self.ref_status_label.setText("参数库未初始化")
+             return
+
+        referenced_params = []
+        for g_name in self.scheme.referenced_groups:
+            group = library.get_group(g_name)
+            if group:
+                for param in group.parameters.values():
+                    referenced_params.append({
+                        "name": param.name,
+                        "group": g_name,
+                        "type": param.type.value,
+                        "default": str(param.default),
+                        "desc": param.description
+                    })
+        
+        # Sort by group then name
+        referenced_params.sort(key=lambda x: (x["group"], x["name"]))
+        
+        self.ref_table.setRowCount(len(referenced_params))
+        for i, p in enumerate(referenced_params):
+             self.ref_table.setItem(i, 0, QTableWidgetItem(p["name"]))
+             self.ref_table.setItem(i, 1, QTableWidgetItem(p["group"]))
+             self.ref_table.setItem(i, 2, QTableWidgetItem(p["type"]))
+             self.ref_table.setItem(i, 3, QTableWidgetItem(p["default"]))
+             self.ref_table.setItem(i, 4, QTableWidgetItem(p["desc"]))
+             
+        self.ref_status_label.setText(f"共找到 {len(referenced_params)} 个已引用参数")
+
 
     def scan_variables(self):
         """扫描变量逻辑"""
-        self.status_label.setText("正在扫描模板...")
+        self.scan_status_label.setText("正在扫描模板...")
         self.result_table.setRowCount(0)
 
         # 1. 提取所有模板中的变量
@@ -577,7 +659,7 @@ class ParameterScanWidget(QWidget):
             )
             self.result_table.setCellWidget(i, 3, add_btn)
 
-        self.status_label.setText(f"扫描完成，发现 {len(missing_vars_data)} 个待处理变量")
+        self.scan_status_label.setText(f"扫描完成，发现 {len(missing_vars_data)} 个待处理变量")
 
     def handle_missing_var(self, var_name: str, status: str):
         """处理缺失变量：添加引用或添加到库"""
@@ -687,6 +769,11 @@ class SchemeEditorDialog(QDialog):
         )
         button_box.accepted.connect(self.save_scheme)
         button_box.rejected.connect(self.reject)
+        
+        # 连接重置按钮
+        reset_button = button_box.button(QDialogButtonBox.StandardButton.Reset)
+        if reset_button:
+            reset_button.clicked.connect(self.reset_scheme)
 
         # 添加自定义按钮
         self.import_btn = QPushButton("导入")
@@ -703,6 +790,9 @@ class SchemeEditorDialog(QDialog):
         """加载方案数据"""
         try:
             self.editable_scheme = SchemeSerializer.from_scheme(self.original_scheme)
+
+            # 清除现有标签页（如果是重新加载）
+            self.tab_widget.clear()
 
             # 添加标签页
             self.basic_info_widget = BasicInfoWidget(self.editable_scheme, self)
